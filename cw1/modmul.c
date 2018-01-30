@@ -22,12 +22,14 @@ void stage1() {
     mpz_init( m );
     mpz_init( c );
 
-    // For each challenge in the input:
-    while (1){
-        // Read in N, e and m. %ZX to read in upper-case hex. Abort if not successfully parsed.
-        if(gmp_scanf( "%ZX", N ) != 1){
-            abort();
-        }
+    /* For each challenge in the input:
+       Read in N, e and m. (%ZX to read in upper-case hex).
+       Try reading in an N to detect a challenge.
+       Abort if e or m are NOT successfully parsed (malformed challenge).
+       Otherwise compute RSA encryption & print result to stdout
+    */
+    while (gmp_scanf( "%ZX", N ) == 1){
+
         if(gmp_scanf( "%ZX", e ) != 1){
             abort();
         }
