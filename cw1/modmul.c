@@ -1,27 +1,54 @@
 /* Copyright (C) 2017 Daniel Page <csdsp@bristol.ac.uk>
  *
- * Use of this source code is restricted per the CC BY-NC-ND license, a copy of 
- * which can be found via http://creativecommons.org (and should be included as 
+ * Use of this source code is restricted per the CC BY-NC-ND license, a copy of
+ * which can be found via http://creativecommons.org (and should be included as
  * LICENSE.txt within the associated archive or repository).
  */
 
 #include "modmul.h"
 
 /* Perform stage 1:
- * 
+ *
  * - read each 3-tuple of N, e and m from stdin,
  * - compute the RSA encryption c, then
  * - write the ciphertext c to stdout.
  */
 
 void stage1() {
+    // Initialise the required multi precision integer variables
+    mpz_t N, e, m, c;
+    mpz_init( N );
+    mpz_init( e );
+    mpz_init( m );
+    mpz_init( c );
 
-  // fill in this function with solution
+    // For each challenge in the input:
+    while (1){
+        // Read in N, e and m. %ZX to read in upper-case hex. Abort if not successfully parsed.
+        if(gmp_scanf( "%ZX", N ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", e ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", m ) != 1){
+            abort();
+        }
 
+        // Compute ciphertext : c = m^e (mod N)
+        mpz_powm (c, m, e, N);
+        gmp_printf( "%ZX\n", c );
+    }
+
+    // Free the multi precision variables
+    mpz_clear( N );
+    mpz_clear( e );
+    mpz_clear( m );
+    mpz_clear( c );
 }
 
 /* Perform stage 2:
- * 
+ *
  * - read each 9-tuple of N, d, p, q, d_p, d_q, i_p, i_q and c from stdin,
  * - compute the RSA decryption m, then
  * - write the plaintext m to stdout.
@@ -34,7 +61,7 @@ void stage2() {
 }
 
 /* Perform stage 3:
- * 
+ *
  * - read each 5-tuple of p, q, g, h and m from stdin,
  * - compute the ElGamal encryption c = (c_1,c_2), then
  * - write the ciphertext c to stdout.
@@ -47,7 +74,7 @@ void stage3() {
 }
 
 /* Perform stage 4:
- * 
+ *
  * - read each 5-tuple of p, q, g, x and c = (c_1,c_2) from stdin,
  * - compute the ElGamal decryption m, then
  * - write the plaintext m to stdout.
