@@ -57,9 +57,61 @@ void stage1() {
  */
 
 void stage2() {
+    // Initialise the required multi precision integer variables
+    mpz_t N, d, p, q, dp, dq, ip, iq, c, m;
+    mpz_init ( N );
+    mpz_init ( d );
+    mpz_init ( p );
+    mpz_init ( q );
+    mpz_init ( dp );
+    mpz_init ( dq );
+    mpz_init ( ip );
+    mpz_init ( iq );
+    mpz_init ( c );
+    mpz_init ( m );
 
-  // fill in this function with solution
+    while (gmp_scanf( "%ZX", N ) == 1){
 
+        if(gmp_scanf( "%ZX", d ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", p ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", q ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", dp ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", dq ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", ip ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", iq ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", c ) != 1){
+            abort();
+        }
+
+        // Compute ciphertext : c = m^e (mod N)
+        mpz_powm (m, c, d, N);
+        gmp_printf( "%ZX\n", m );
+    }
+
+    // Free the multi precision variables
+    mpz_clear( N );
+    mpz_clear( d );
+    mpz_clear( p );
+    mpz_clear( q );
+    mpz_clear( dp );
+    mpz_clear( dq );
+    mpz_clear( ip );
+    mpz_clear( iq );
+    mpz_clear( c );
 }
 
 /* Perform stage 3:
