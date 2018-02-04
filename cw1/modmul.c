@@ -140,8 +140,21 @@ void stage3() {
     mpz_init ( c2 );
 
     gmp_randstate_t randState;
-    gmp_randinit_default (randState);
-    // gmp_randseed (randState, seed)
+    gmp_randinit_mt (randState);
+
+    // Get random seed from /dev/urandom
+    char seed[64];
+    FILE *random;
+    random = fopen("/dev/urandom", "r");
+    fread(&seed, 1, sizeof seed, random);
+    fclose(random);
+    // Alternatively:
+    // char seed[64];
+    // arc4random_buf(seed, sizeof seed); // BSD Distros
+    // getrandom(seed, sizeof seed) // Linux Distros
+
+    // Initialise the random state with the seed
+    gmp_randseed_ui (randState, (unsigned long) seed);
 
     /* For each challenge in the input:
        Read in p, q, g, h and m. (%ZX to read in upper-case hex).
@@ -165,22 +178,22 @@ void stage3() {
         }
 
         // Compute random integer for encryption
-        // mpz_urandomm (r, randState, q);
+        mpz_urandomm (r, randState, q);
 
         // Encyrption : c1 = g^r (mod p)
-        // mpz_powm (c1, g, r, p); // random r
+        mpz_powm (c1, g, r, p); // random r
 
         // Encryption : c2 = m * h^r (mod p)
-        // mpz_powm (c2, h, r, p);
-        // mpz_mul (c2, m, c2);
-        // mpz_mod (c2, c2, p);
-
-        // fixed r = 1
-        mpz_mul (c2, m, h);
+        mpz_powm (c2, h, r, p);
+        mpz_mul (c2, m, c2);
         mpz_mod (c2, c2, p);
 
-        gmp_printf( "%ZX\n", g); // for r = 1
-        // gmp_printf( "%ZX\n", c1) // for random r
+        // fixed r = 1
+        // mpz_mul (c2, m, h);
+        // mpz_mod (c2, c2, p);
+
+        // gmp_printf( "%ZX\n", g); // for r = 1
+        gmp_printf( "%ZX\n", c1); // for random r
         gmp_printf( "%ZX\n", c2);
     }
 
