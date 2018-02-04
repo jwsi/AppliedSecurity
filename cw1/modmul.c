@@ -58,17 +58,20 @@ void stage1() {
 
 void stage2() {
     // Initialise the required multi precision integer variables
-    mpz_t N, d, p, q, dp, dq, ip, iq, c, m;
+    mpz_t N, d, p, q, dp, dq, pInv, qInv, c, m, m1, m2, h;
     mpz_init ( N );
     mpz_init ( d );
     mpz_init ( p );
     mpz_init ( q );
     mpz_init ( dp );
     mpz_init ( dq );
-    mpz_init ( ip );
-    mpz_init ( iq );
+    mpz_init ( pInv );
+    mpz_init ( qInv );
     mpz_init ( c );
     mpz_init ( m );
+    mpz_init ( m1 );
+    mpz_init ( m2 );
+    mpz_init ( h );
 
     /* For each challenge in the input:
        Read in N, d, p, q, dp, dq, ip, iq and c. (%ZX to read in upper-case hex).
@@ -93,10 +96,10 @@ void stage2() {
         if(gmp_scanf( "%ZX", dq ) != 1){
             abort();
         }
-        if(gmp_scanf( "%ZX", ip ) != 1){
+        if(gmp_scanf( "%ZX", pInv ) != 1){
             abort();
         }
-        if(gmp_scanf( "%ZX", iq ) != 1){
+        if(gmp_scanf( "%ZX", qInv ) != 1){
             abort();
         }
         if(gmp_scanf( "%ZX", c ) != 1){
@@ -104,7 +107,21 @@ void stage2() {
         }
 
         // Compute plaintext : m = c^d (mod N)
-        mpz_powm (m, c, d, N);
+        // m1 = c^(d mod p-1) mod p = (c mod p)^dp (mod p)
+        // m2 = c^(d mod q-1) mod q = (c mod q)^dq (mod q)
+        mpz_powm(m1, c, dp, p);
+        mpz_powm(m2, c, dq, q);
+
+        // h = qInv * (m1 - m2 + p) mod p (add p to keep result positive)
+        mpz_sub(h, m1, m2);
+        mpz_add(h, h, p);
+        mpz_mul(h, h, qInv);
+        mpz_mod(h, h, p);
+
+        // m = m2 + h*q
+        mpz_mul(h, h, q);
+        mpz_add(m, m2, h);
+
         gmp_printf( "%ZX\n", m );
     }
 
@@ -115,9 +132,13 @@ void stage2() {
     mpz_clear( q );
     mpz_clear( dp );
     mpz_clear( dq );
-    mpz_clear( ip );
-    mpz_clear( iq );
+    mpz_clear( pInv );
+    mpz_clear( qInv );
     mpz_clear( c );
+    mpz_clear( m );
+    mpz_clear( m1 );
+    mpz_clear( m2 );
+    mpz_clear( h );
 }
 
 /* Perform stage 3:
