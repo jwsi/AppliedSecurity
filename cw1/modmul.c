@@ -26,7 +26,7 @@ void stage1() {
        Read in N, e and m. (%ZX to read in upper-case hex).
        Try reading in an N to detect a challenge.
        Abort if e or m are NOT successfully parsed (malformed challenge).
-       Otherwise compute RSA encryption & print result to stdout
+       Otherwise compute RSA encryption & print result to stdout.
     */
     while (gmp_scanf( "%ZX", N ) == 1){
 
@@ -70,6 +70,12 @@ void stage2() {
     mpz_init ( c );
     mpz_init ( m );
 
+    /* For each challenge in the input:
+       Read in N, d, p, q, dp, dq, ip, iq and c. (%ZX to read in upper-case hex).
+       Try reading in an N to detect a challenge.
+       Abort if further lines are NOT successfully parsed (malformed challenge).
+       Otherwise compute RSA decryption & print result to stdout.
+    */
     while (gmp_scanf( "%ZX", N ) == 1){
 
         if(gmp_scanf( "%ZX", d ) != 1){
@@ -97,7 +103,7 @@ void stage2() {
             abort();
         }
 
-        // Compute ciphertext : c = m^e (mod N)
+        // Compute plaintext : m = c^d (mod N)
         mpz_powm (m, c, d, N);
         gmp_printf( "%ZX\n", m );
     }
@@ -122,9 +128,73 @@ void stage2() {
  */
 
 void stage3() {
+    // Initialise the required multi precision integer variables
+    mpz_t p, q, g, h, m, r, c1, c2;
+    mpz_init ( p );
+    mpz_init ( q );
+    mpz_init ( g );
+    mpz_init ( h );
+    mpz_init ( m );
+    mpz_init ( r );
+    mpz_init ( c1 );
+    mpz_init ( c2 );
 
-  // fill in this function with solution
+    gmp_randstate_t randState;
+    gmp_randinit_default (randState);
+    // gmp_randseed (randState, seed)
 
+    /* For each challenge in the input:
+       Read in p, q, g, h and m. (%ZX to read in upper-case hex).
+       Try reading in an p to detect a challenge.
+       Abort if further lines are NOT successfully parsed (malformed challenge).
+       Otherwise compute RSA encryption & print result to stdout.
+    */
+    while (gmp_scanf( "%ZX", p ) == 1){
+
+        if(gmp_scanf( "%ZX", q ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", g ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", h ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", m ) != 1){
+            abort();
+        }
+
+        // Compute random integer for encryption
+        // mpz_urandomm (r, randState, q);
+
+        // Encyrption : c1 = g^r (mod p)
+        // mpz_powm (c1, g, r, p); // random r
+
+        // Encryption : c2 = m * h^r (mod p)
+        // mpz_powm (c2, h, r, p);
+        // mpz_mul (c2, m, c2);
+        // mpz_mod (c2, c2, p);
+
+        // fixed r = 1
+        mpz_mul (c2, m, h);
+        mpz_mod (c2, c2, p);
+
+        gmp_printf( "%ZX\n", g); // for r = 1
+        // gmp_printf( "%ZX\n", c1) // for random r
+        gmp_printf( "%ZX\n", c2);
+    }
+
+    // Free the multi precision variables
+    mpz_clear( p );
+    mpz_clear( q );
+    mpz_clear( g );
+    mpz_clear( h );
+    mpz_clear( m );
+    mpz_clear ( r );
+    mpz_clear ( c1 );
+    mpz_clear ( c2 );
+
+    gmp_randclear( randState );
 }
 
 /* Perform stage 4:
@@ -135,9 +205,58 @@ void stage3() {
  */
 
 void stage4() {
+    // Initialise the required multi precision integer variables
+    mpz_t p, q, g, x, c1, c2, m;
+    mpz_init ( p );
+    mpz_init ( q );
+    mpz_init ( g );
+    mpz_init ( x );
+    mpz_init ( c1 );
+    mpz_init ( c2 );
+    mpz_init ( m );
 
-  // fill in this function with solution
+    /* For each challenge in the input:
+       Read in p, q, g, x, c1 and c2. (%ZX to read in upper-case hex).
+       Try reading in an p to detect a challenge.
+       Abort if further lines are NOT successfully parsed (malformed challenge).
+       Otherwise compute RSA encryption & print result to stdout.
+    */
+    while (gmp_scanf( "%ZX", p ) == 1){
 
+        if(gmp_scanf( "%ZX", q ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", g ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", x ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", c1 ) != 1){
+            abort();
+        }
+        if(gmp_scanf( "%ZX", c2 ) != 1){
+            abort();
+        }
+
+        // Decryption : c1^-x * c2 = m
+        mpz_neg(x, x);
+        mpz_powm(m, c1, x, p);
+        mpz_mul (m, m, c2);
+        mpz_mod (m, m, p);
+
+        // Print out the decrypted ciphertext
+        gmp_printf( "%ZX\n", m);
+    }
+
+    // Free the multi precision variables
+    mpz_clear( p );
+    mpz_clear( q );
+    mpz_clear( g );
+    mpz_clear( x );
+    mpz_clear ( c1 );
+    mpz_clear ( c2 );
+    mpz_clear ( m );
 }
 
 /* The main function acts as a driver for the assignment by simply invoking the
