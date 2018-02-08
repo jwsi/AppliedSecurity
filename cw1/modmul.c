@@ -7,6 +7,28 @@
 
 #include "modmul.h"
 
+int getBit(mpz_t number, int bitNumber){
+
+    int position = bitNumber % (sizeof(mp_limb_t) * 8);
+    int limbNumber = bitNumber / (sizeof(mp_limb_t) * 8);
+
+    mp_limb_t *limb = number->_mp_d;
+
+    return (limb[limbNumber] >> position) & 1;
+}
+
+
+
+void windowedExponentiation(mpz_t x, mpz_t y, mpz_t N, int k){
+    // Precompute the values 1 -> 2^k - 1
+    mpz_t *precomputed = malloc(sizeof(mpz_t) * k/2)
+    for (int i = 1; i < k; k+=2){
+        mpz_init(precomputed[(i-1)/2]);
+        mpz_mul_si(precomputed[(i-1)/2], i)
+        mpz_mod(precomputed[(i-1)/2], precomputed[(i-1)/2], N)
+    }
+}
+
 /* Perform stage 1:
  *
  * - read each 3-tuple of N, e and m from stdin,
