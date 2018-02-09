@@ -5,27 +5,69 @@
  * LICENSE.txt within the associated archive or repository).
  */
 
+#define max(x,y) ((x) >= (y)) ? (x) : (y)
+
 #include "modmul.h"
 
+// Get bit of mpz_t instance corresponding to the relevant bit number
 int getBit(mpz_t number, int bitNumber){
-
     int position = bitNumber % (sizeof(mp_limb_t) * 8);
     int limbNumber = bitNumber / (sizeof(mp_limb_t) * 8);
-
     mp_limb_t *limb = number->_mp_d;
-
     return (limb[limbNumber] >> position) & 1;
 }
 
+// Get length of mpz_t instance in bits
+int getLength(mpz_t number){
+    int length = number->_mp_size * (sizeof(mp_limb_t) * 8);
+    return length;
+}
 
-
-void windowedExponentiation(mpz_t x, mpz_t y, mpz_t N, int k){
+// Perform sliding window exponentiation
+void windowedExponentiation(mpz_t t, mpz_t x, mpz_t y, mpz_t N, int k){
     // Precompute the values 1 -> 2^k - 1
-    mpz_t *precomputed = malloc(sizeof(mpz_t) * k/2)
-    for (int i = 1; i < k; k+=2){
-        mpz_init(precomputed[(i-1)/2]);
-        mpz_mul_si(precomputed[(i-1)/2], i)
-        mpz_mod(precomputed[(i-1)/2], precomputed[(i-1)/2], N)
+    mpz_t *precomputed = malloc(sizeof(mpz_t) * (1 << (k-1)));
+    mpz_init(precomputed[0]);
+    mpz_set(precomputed[0], x);
+    mpz_t xSquared;
+    mpz_init(xSquared);
+    mpz_powm_ui(xSquared, x, 2, N);
+    for (int i = 1; i < ((1<<(k-1))); i++){
+        mpz_init(precomputed[i]);
+        mpz_mul(precomputed[i], precomputed[i-1], xSquared);
+        mpz_mod(precomputed[i], precomputed[i], N);
+    } // E.g. to lookup x^5 -> (5-1)/2 = 2nd element in precomputed array
+
+    mpz_set_si(t, 1);
+    int i = getLength(y)-1;
+    int l = 0;
+    int u = 0;
+    while (i >= 0){
+        // Cut off leading zeros
+        if (getBit(y, i) == 0){
+            l = i;
+            u = 0;
+        }
+        // Cast out the window and cut off trailing zeros
+        else {
+            l = max(i-k+1, 0);
+            while (getBit(y, l) == 0){
+                l = l+1;
+            }
+            u = 0;
+            for (int bit = i; bit >= l; bit--){
+                u = (u << 1) | getBit(y, bit);
+            }
+        }
+        // t^(2^(i-l+1))
+        unsigned int exponent = (1 << (i-l+1));
+        mpz_pow_ui(t, t, exponent);
+        mpz_mod(t, t, N);
+        if (u != 0){
+            mpz_mul(t, t, precomputed[(u-1)/2]);
+            mpz_mod(t, t, N);
+        }
+        i = l-1;
     }
 }
 
@@ -50,17 +92,18 @@ void stage1() {
        Abort if e or m are NOT successfully parsed (malformed challenge).
        Otherwise compute RSA encryption & print result to stdout.
     */
-    while (gmp_scanf( "%ZX", N ) == 1){
+    while (gmp_scanf( "%ZX", N ) == 1){ //used to be N
 
-        if(gmp_scanf( "%ZX", e ) != 1){
+        if(gmp_scanf( "%ZX", e ) != 1){ //used to be e
             abort();
         }
-        if(gmp_scanf( "%ZX", m ) != 1){
+        if(gmp_scanf( "%ZX", m ) != 1){ // used to be m
             abort();
         }
 
         // Compute ciphertext : c = m^e (mod N)
-        mpz_powm (c, m, e, N);
+        windowedExponentiation(c, m, e, N, 3);
+        // mpz_powm (c, m, e, N); // gmp method
         gmp_printf( "%ZX\n", c );
     }
 
