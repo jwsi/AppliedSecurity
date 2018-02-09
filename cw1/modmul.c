@@ -102,7 +102,7 @@ void stage1() {
         }
 
         // Compute ciphertext : c = m^e (mod N)
-        windowedExponentiation(c, m, e, N, 3);
+        windowedExponentiation(c, m, e, N, 5);
         // mpz_powm (c, m, e, N); // gmp method
         gmp_printf( "%ZX\n", c );
     }
