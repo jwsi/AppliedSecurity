@@ -6,6 +6,7 @@
  */
 
 #define max(x,y) ((x) >= (y)) ? (x) : (y)
+#define ENTROPY_SIZE 4 // Entropy gathered from /dev/urandom in terms of 64 bit multiples. E.g 4 = 64*4 = 256 bits.
 
 #include "modmul.h"
 
@@ -174,8 +175,10 @@ void stage2() {
         // Compute plaintext : m = c^d (mod N)
         // m1 = c^(d mod p-1) mod p = (c mod p)^dp (mod p)
         // m2 = c^(d mod q-1) mod q = (c mod q)^dq (mod q)
-        mpz_powm(m1, c, dp, p);
-        mpz_powm(m2, c, dq, q);
+        windowedExponentiation(m1, c, dp, p, 5);
+        windowedExponentiation(m2, c, dq, q, 5);
+        // mpz_powm(m1, c, dp, p); // original gmp modular exponentiation
+        // mpz_powm(m2, c, dq, q);
 
         // h = qInv * (m1 - m2 + p) mod p (add p to keep result positive)
         mpz_sub(h, m1, m2);
@@ -228,19 +231,25 @@ void stage3() {
     gmp_randstate_t randState;
     gmp_randinit_mt (randState);
 
-    // Get random seed from /dev/urandom
-    char seed[64];
+    // Get entropy from randomness source /dev/urandom
+    unsigned long seed;
+    mpz_t mpzSeed;
+    mpz_init2(mpzSeed, ENTROPY_SIZE*sizeof(mp_limb_t)*8);
+    mp_limb_t *limb = mpzSeed->_mp_d;
     FILE *random;
     random = fopen("/dev/urandom", "r");
-    fread(&seed, 1, sizeof seed, random);
+    for (int i=0; i<ENTROPY_SIZE; i++){
+        fread(&seed, 1, sizeof seed, random);
+        limb[i] = seed;
+    }
+    mpzSeed->_mp_size = ENTROPY_SIZE;
     fclose(random);
+
     // Alternatively:
-    // char seed[64];
-    // arc4random_buf(seed, sizeof seed); // BSD Distros
+    // arc4random_buf(&test, sizeof test); // BSD Distros
     // getrandom(seed, sizeof seed) // Linux Distros
 
-    // Initialise the random state with the seed
-    gmp_randseed_ui (randState, (unsigned long) seed);
+    gmp_randseed(randState, mpzSeed); // seed the random state
 
     /* For each challenge in the input:
        Read in p, q, g, h and m. (%ZX to read in upper-case hex).
