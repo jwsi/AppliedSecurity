@@ -20,7 +20,7 @@ int getBit(mpz_t number, int bitNumber){
 
 // Get length of mpz_t instance in bits
 int getLength(mpz_t number){
-    int length = number->_mp_size * (sizeof(mp_limb_t) * 8);
+    int length = abs(number->_mp_size) * (sizeof(mp_limb_t) * 8);
     return length;
 }
 
@@ -276,10 +276,12 @@ void stage3() {
         mpz_urandomm (r, randState, q);
 
         // Encyrption : c1 = g^r (mod p)
-        mpz_powm (c1, g, r, p); // random r
+        windowedExponentiation(c1, g, r, p, 5);
+        // mpz_powm (c1, g, r, p); // random r
 
         // Encryption : c2 = m * h^r (mod p)
-        mpz_powm (c2, h, r, p);
+        windowedExponentiation(c2, h, r, p, 5);
+        // mpz_powm (c2, h, r, p);
         mpz_mul (c2, m, c2);
         mpz_mod (c2, c2, p);
 
@@ -349,7 +351,9 @@ void stage4() {
 
         // Decryption : c1^-x * c2 = m
         mpz_neg(x, x);
-        mpz_powm(m, c1, x, p);
+        mpz_mod(x, x, q); // sliding window cannot handle negative exponents
+        windowedExponentiation(m, c1, x, p, 5);
+        // mpz_powm(m, c1, x, p);
         mpz_mul (m, m, c2);
         mpz_mod (m, m, p);
 
