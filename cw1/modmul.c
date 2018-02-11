@@ -11,7 +11,7 @@
 #include "modmul.h"
 
 // This stores the inverse of a mod N in inv. Algorithm only completes if gcd(a, N) == 1.
-void modularInverse(mpz_t inv, mpz_t a, mpz_t N){
+void modularInverse(mpz_t inv, const mpz_t a, const mpz_t N){
     mpz_t g, t;
     mpz_init(g);
     mpz_init(t);
@@ -22,7 +22,7 @@ void modularInverse(mpz_t inv, mpz_t a, mpz_t N){
 }
 
 // Finds appropriate value of R for montgomery calculations
-void montgomeryR(mpz_t R, mpz_t N){
+void montgomeryR(mpz_t R, const mpz_t N){
     mpz_t temp;
     mpz_init(temp);
     mpz_set_si(R, 1);
@@ -39,7 +39,7 @@ void montgomeryR(mpz_t R, mpz_t N){
 }
 
 // This algorithm is the montgomery reduction algorithm
-void montgomeryReduction(mpz_t t, mpz_t T, mpz_t N, mpz_t R){
+void montgomeryReduction(mpz_t t, const mpz_t T, const mpz_t N, const mpz_t R){
     // perform the montgomery reduction
     mpz_t Ninv, m;
     mpz_init(Ninv);
@@ -61,7 +61,7 @@ void montgomeryReduction(mpz_t t, mpz_t T, mpz_t N, mpz_t R){
 }
 
 // Given a and b in montgomery form it will compute and return (a*b) mod N in montgomery form.
-void montgomeryMultiplication(mpz_t abMont, mpz_t aMont, mpz_t bMont, mpz_t N, mpz_t R){
+void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont, const mpz_t N, const mpz_t R){
     mpz_t abRR;
     mpz_init(abRR);
 
@@ -71,15 +71,17 @@ void montgomeryMultiplication(mpz_t abMont, mpz_t aMont, mpz_t bMont, mpz_t N, m
     montgomeryReduction(abMont, abRR, N, R);
 }
 
+
+
 // This function returns the montgomery form of integer a. I.e. aR (mod N)
-void montgomeryForm(mpz_t r, mpz_t a, mpz_t N, mpz_t R){
+void montgomeryForm(mpz_t r, const mpz_t a, const mpz_t N, const mpz_t R){
     // compute aR (mod N)
     mpz_mul(r, a, R);
     mpz_mod(r, r, N);
 }
 
 // Get bit of mpz_t instance corresponding to the relevant bit number
-int getBit(mpz_t number, int bitNumber){
+int getBit(mpz_t const number, int bitNumber){
     int position = bitNumber % (sizeof(mp_limb_t) * 8);
     int limbNumber = bitNumber / (sizeof(mp_limb_t) * 8);
     mp_limb_t *limb = number->_mp_d;
@@ -87,13 +89,13 @@ int getBit(mpz_t number, int bitNumber){
 }
 
 // Get length of mpz_t instance in bits
-int getLength(mpz_t number){
+int getLength(mpz_t const number){
     int length = abs(number->_mp_size) * (sizeof(mp_limb_t) * 8);
     return length;
 }
 
 // Perform sliding window exponentiation
-void windowedExponentiation(mpz_t t, mpz_t x, mpz_t y, mpz_t N, int k){
+void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N, int k){
     // Precompute the values 1 -> 2^k - 1
     mpz_t *precomputed = malloc(sizeof(mpz_t) * (1 << (k-1)));
     mpz_init(precomputed[0]);
