@@ -401,61 +401,7 @@ int main( int argc, char* argv[] ) {
     stage4();
   }
   else {
-    mpz_t N, e, m, c, R, tempMont;
-    mpz_init( N );
-    mpz_init( e );
-    mpz_init( m );
-    mpz_init( c );
-    mpz_init( R );
-    mpz_init( tempMont );
-
-    /* For each challenge in the input:
-       Read in N, e and m. (%ZX to read in upper-case hex).
-       Try reading in an N to detect a challenge.
-       Abort if e or m are NOT successfully parsed (malformed challenge).
-       Otherwise compute RSA encryption & print result to stdout.
-    */
-    while (gmp_scanf( "%Zd", N ) == 1){ //used to be N
-
-        if(gmp_scanf( "%Zd", e ) != 1){ //used to be e
-            abort();
-        }
-        if(gmp_scanf( "%Zd", m ) != 1){ // used to be m
-            abort();
-        }
-
-        // Compute ciphertext : c = m^e (mod N)
-        // windowedExponentiation(c, m, e, N, 5);
-        montgomeryR(R, N);
-        gmp_printf( "%Zd\n\n", R );
-
-        gmp_printf( "%Zd\n", e );
-        // montgomeryForm(tempMont, e, N, R);
-        // montgomeryExponentiation(tempMont, tempMont, 4, N, R);
-        // montgomeryReduction(tempMont, tempMont, N, R);
-        windowedExponentiation(c, m, e, N, 5);
-        gmp_printf( "%Zd\n\n", c );
-
-        // gmp_printf( "%Zd\n", m );
-        // montgomeryForm(tempMont, m, N, R);
-        // montgomeryExponentiation(tempMont, tempMont, 4, N, R);
-        // montgomeryReduction(tempMont, tempMont, N, R);
-        // gmp_printf( "%Zd\n", tempMont );
-
-        // mpz_powm (c, m, e, N); // gmp method
-        // gmp_printf( "%Zd\n", c );
-    }
-
-    // Free the multi precision variables
-    mpz_clear( N );
-    mpz_clear( e );
-    mpz_clear( m );
-    mpz_clear( c );
-    mpz_clear( R );
-
-
-
-
+    abort();
   }
 
   return 0;
