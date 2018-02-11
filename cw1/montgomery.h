@@ -17,4 +17,6 @@ void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont
 
 void montgomeryForm(mpz_t r, const mpz_t a, const mpz_t N, const mpz_t R);
 
+void montgomeryExponentiation(mpz_t res, const mpz_t b, int k, const mpz_t N, const mpz_t R);
+
 #endif

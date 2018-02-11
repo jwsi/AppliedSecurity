@@ -29,7 +29,10 @@ void montgomeryR(mpz_t R, const mpz_t N){
 }
 
 // This algorithm is the montgomery reduction algorithm
-void montgomeryReduction(mpz_t t, const mpz_t T, const mpz_t N, const mpz_t R){
+void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t R){
+    mpz_t T;
+    mpz_init(T);
+    mpz_set(T, Tconst);
     // perform the montgomery reduction
     mpz_t Ninv, m;
     mpz_init(Ninv);
@@ -61,8 +64,12 @@ void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont
     montgomeryReduction(abMont, abRR, N, R);
 }
 
-void montgomeryExponentiation(){
-    
+// Given b in montgomery form and k in integer form. Will output b^k in montgomery form.
+void montgomeryExponentiation(mpz_t res, const mpz_t b, int k, const mpz_t N, const mpz_t R){
+    mpz_set(res, b);
+    for (int i = 1; i < k; i++){
+        montgomeryMultiplication(res, res, b, N, R);
+    }
 }
 
 // This function returns the montgomery form of integer a. I.e. aR (mod N)
