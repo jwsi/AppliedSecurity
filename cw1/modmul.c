@@ -480,6 +480,7 @@ int main( int argc, char* argv[] ) {
     montgomeryForm(bMont, b, N, R);
     montgomeryMultiplication(t, aMont, bMont, N, R);
 
+    // printouts
     gmp_printf("aMont : %Zd\n", aMont);
     gmp_printf("bMont : %Zd\n", bMont);
     gmp_printf("c' : %Zd\n", t);
