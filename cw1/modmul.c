@@ -29,20 +29,25 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
     // Precompute the values 1 -> 2^k - 1
     mpz_t *precomputed = malloc(sizeof(mpz_t) * (1 << (k-1)));
     mpz_init(precomputed[0]);
-    mpz_set(precomputed[0], x);
-    mpz_t xSquared;
+    mpz_t R, xSquared;
+    mpz_init(R);
     mpz_init(xSquared);
-    mpz_powm_ui(xSquared, x, 2, N);
+
+    montgomeryR(R, N);
+    // mpz_set(precomputed[0], x);
+    montgomeryForm(precomputed[0], x, N, R);
+
+    montgomeryMultiplication(xSquared, precomputed[0], precomputed[0], N, R);
     for (int i = 1; i < ((1<<(k-1))); i++){
         mpz_init(precomputed[i]);
-        mpz_mul(precomputed[i], precomputed[i-1], xSquared);
-        mpz_mod(precomputed[i], precomputed[i], N);
+        montgomeryMultiplication(precomputed[i], precomputed[i-1], xSquared, N, R);
     } // E.g. to lookup x^5 -> (5-1)/2 = 2nd element in precomputed array
 
     mpz_set_si(t, 1);
-    int i = getLength(y)-1;
-    int l = 0;
-    int u = 0;
+    montgomeryForm(t, t, N, R);
+    long i = getLength(y)-1;
+    long l = 0;
+    long u = 0;
     while (i >= 0){
         // Cut off leading zeros
         if (getBit(y, i) == 0){
@@ -61,15 +66,18 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
             }
         }
         // t^(2^(i-l+1))
-        unsigned int exponent = (1 << (i-l+1));
-        mpz_pow_ui(t, t, exponent);
-        mpz_mod(t, t, N);
+        unsigned long exponent = (1 << (i-l+1));
+        // mpz_pow_ui(t, t, exponent);
+        // mpz_mod(t, t, N);
+        montgomeryExponentiation(t, t, exponent, N, R);
         if (u != 0){
-            mpz_mul(t, t, precomputed[(u-1)/2]);
-            mpz_mod(t, t, N);
+            // mpz_mul(t, t, precomputed[(u-1)/2]);
+            // mpz_mod(t, t, N);
+            montgomeryMultiplication(t, t, precomputed[(u-1)/2], N, R);
         }
         i = l-1;
     }
+    montgomeryReduction(t, t, N, R);
 }
 
 /* Perform stage 1:
@@ -393,33 +401,61 @@ int main( int argc, char* argv[] ) {
     stage4();
   }
   else {
-    mpz_t t, a, b, N, aMont, bMont, R, temp;
-    mpz_init(t);
-    mpz_init(a);
-    mpz_init(b);
-    mpz_init(N);
-    mpz_init(aMont);
-    mpz_init(bMont);
-    mpz_init(R);
-    mpz_init(temp);
+    mpz_t N, e, m, c, R, tempMont;
+    mpz_init( N );
+    mpz_init( e );
+    mpz_init( m );
+    mpz_init( c );
+    mpz_init( R );
+    mpz_init( tempMont );
 
-    mpz_set_si(a, 68);
-    mpz_set_si(b, 57);
-    mpz_set_si(N, 109);
+    /* For each challenge in the input:
+       Read in N, e and m. (%ZX to read in upper-case hex).
+       Try reading in an N to detect a challenge.
+       Abort if e or m are NOT successfully parsed (malformed challenge).
+       Otherwise compute RSA encryption & print result to stdout.
+    */
+    while (gmp_scanf( "%Zd", N ) == 1){ //used to be N
 
-    montgomeryR(R, N); // Finds appropriate value of R given N.
-    montgomeryForm(aMont, a, N, R);
-    montgomeryForm(bMont, b, N, R);
-    montgomeryMultiplication(t, aMont, bMont, N, R);
+        if(gmp_scanf( "%Zd", e ) != 1){ //used to be e
+            abort();
+        }
+        if(gmp_scanf( "%Zd", m ) != 1){ // used to be m
+            abort();
+        }
 
-    // printouts
-    gmp_printf("aMont : %Zd\n", aMont);
-    gmp_printf("bMont : %Zd\n", bMont);
-    gmp_printf("c' : %Zd\n", t);
+        // Compute ciphertext : c = m^e (mod N)
+        // windowedExponentiation(c, m, e, N, 5);
+        montgomeryR(R, N);
+        gmp_printf( "%Zd\n\n", R );
 
-    mpz_set(temp, t);
-    montgomeryReduction(t, temp, N, R);
-    gmp_printf("t : %Zd\n", t);
+        gmp_printf( "%Zd\n", e );
+        // montgomeryForm(tempMont, e, N, R);
+        // montgomeryExponentiation(tempMont, tempMont, 4, N, R);
+        // montgomeryReduction(tempMont, tempMont, N, R);
+        windowedExponentiation(c, m, e, N, 5);
+        gmp_printf( "%Zd\n\n", c );
+
+        // gmp_printf( "%Zd\n", m );
+        // montgomeryForm(tempMont, m, N, R);
+        // montgomeryExponentiation(tempMont, tempMont, 4, N, R);
+        // montgomeryReduction(tempMont, tempMont, N, R);
+        // gmp_printf( "%Zd\n", tempMont );
+
+        // mpz_powm (c, m, e, N); // gmp method
+        // gmp_printf( "%Zd\n", c );
+    }
+
+    // Free the multi precision variables
+    mpz_clear( N );
+    mpz_clear( e );
+    mpz_clear( m );
+    mpz_clear( c );
+    mpz_clear( R );
+
+
+
+
   }
 
   return 0;

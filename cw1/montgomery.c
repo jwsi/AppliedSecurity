@@ -65,7 +65,10 @@ void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont
 }
 
 // Given b in montgomery form and k in integer form. Will output b^k in montgomery form.
-void montgomeryExponentiation(mpz_t res, const mpz_t b, int k, const mpz_t N, const mpz_t R){
+void montgomeryExponentiation(mpz_t res, const mpz_t bConst, int k, const mpz_t N, const mpz_t R){
+    mpz_t b;
+    mpz_init(b);
+    mpz_set(b, bConst);
     mpz_set(res, b);
     for (int i = 1; i < k; i++){
         montgomeryMultiplication(res, res, b, N, R);
