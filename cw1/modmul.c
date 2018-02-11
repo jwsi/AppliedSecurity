@@ -10,6 +10,74 @@
 
 #include "modmul.h"
 
+// This stores the inverse of a mod N in inv. Algorithm only completes if gcd(a, N) == 1.
+void modularInverse(mpz_t inv, mpz_t a, mpz_t N){
+    mpz_t g, t;
+    mpz_init(g);
+    mpz_init(t);
+    mpz_gcdext(g, inv, t, a, N); // set inv to modular inverse of a mod N.
+    if (mpz_cmp_si (g, 1) != 0){ // Check to ensure gcd(a, N) is 1 (i.e. co-prime)
+        abort();
+    }
+}
+
+// Finds appropriate value of R for montgomery calculations
+void montgomeryR(mpz_t R, mpz_t N){
+    mpz_t temp;
+    mpz_init(temp);
+    mpz_set_si(R, 1);
+    mpz_gcd(temp, R, N);
+
+    if (mpz_fdiv_ui(N, 2) == 0){ // Cannot use an even N - protects against infinite loop!
+        abort();
+    }
+
+    while(mpz_cmp(R, N) <= 0 || mpz_cmp_si(temp, 1) != 0){
+        mpz_mul_si(R, R, 2);
+        mpz_gcd(temp, R, N);
+    }
+}
+
+// This algorithm is the montgomery reduction algorithm
+void montgomeryReduction(mpz_t t, mpz_t T, mpz_t N, mpz_t R){
+    // perform the montgomery reduction
+    mpz_t Ninv, m;
+    mpz_init(Ninv);
+    mpz_init(m);
+    // find N^-1 mod R
+    modularInverse(Ninv, N, R);
+    // setup m
+    mpz_neg(Ninv, Ninv);
+    mpz_mul(m, T, Ninv);
+    mpz_mod(m, m, R);
+    // setup t
+    mpz_mul(t, m, N);
+    mpz_add(t, t, T);
+    mpz_div(t, t, R);
+    // deal with mod operation efficiently
+    if (mpz_cmp(t, N) >= 0){
+        mpz_sub(t, t, N);
+    }
+}
+
+// Given a and b in montgomery form it will compute and return (a*b) mod N in montgomery form.
+void montgomeryMultiplication(mpz_t abMont, mpz_t aMont, mpz_t bMont, mpz_t N, mpz_t R){
+    mpz_t abRR;
+    mpz_init(abRR);
+
+    // compute aR * bR
+    mpz_mul(abRR, aMont, bMont);
+
+    montgomeryReduction(abMont, abRR, N, R);
+}
+
+// This function returns the montgomery form of integer a. I.e. aR (mod N)
+void montgomeryForm(mpz_t r, mpz_t a, mpz_t N, mpz_t R){
+    // compute aR (mod N)
+    mpz_mul(r, a, R);
+    mpz_mod(r, r, N);
+}
+
 // Get bit of mpz_t instance corresponding to the relevant bit number
 int getBit(mpz_t number, int bitNumber){
     int position = bitNumber % (sizeof(mp_limb_t) * 8);
@@ -393,7 +461,32 @@ int main( int argc, char* argv[] ) {
     stage4();
   }
   else {
-    abort();
+    mpz_t t, a, b, N, aMont, bMont, R, temp;
+    mpz_init(t);
+    mpz_init(a);
+    mpz_init(b);
+    mpz_init(N);
+    mpz_init(aMont);
+    mpz_init(bMont);
+    mpz_init(R);
+    mpz_init(temp);
+
+    mpz_set_si(a, 68);
+    mpz_set_si(b, 57);
+    mpz_set_si(N, 109);
+
+    montgomeryR(R, N); // Finds appropriate value of R given N.
+    montgomeryForm(aMont, a, N, R);
+    montgomeryForm(bMont, b, N, R);
+    montgomeryMultiplication(t, aMont, bMont, N, R);
+
+    gmp_printf("aMont : %Zd\n", aMont);
+    gmp_printf("bMont : %Zd\n", bMont);
+    gmp_printf("c' : %Zd\n", t);
+
+    mpz_set(temp, t);
+    montgomeryReduction(t, temp, N, R);
+    gmp_printf("t : %Zd\n", t);
   }
 
   return 0;
