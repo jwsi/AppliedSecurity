@@ -13,18 +13,20 @@ void modularInverse(mpz_t inv, const mpz_t a, const mpz_t N){
 
 // Finds appropriate value of R for montgomery calculations
 void montgomeryR(mpz_t R, const mpz_t N){
-    mpz_t temp;
-    mpz_init(temp);
-    mpz_set_si(R, 1);
-    mpz_gcd(temp, R, N);
+    mpz_t Rorig;
+    mpz_init(Rorig);
+    // Set original R to base size of processor (2^64)
+    mpz_set_si(Rorig, 2);
+    mpz_pow_ui(Rorig, Rorig, 64);
+    mpz_set(R, Rorig);
 
     if (mpz_fdiv_ui(N, 2) == 0){ // Cannot use an even N - protects against infinite loop!
         abort();
     }
 
-    while(mpz_cmp(R, N) <= 0 || mpz_cmp_si(temp, 1) != 0){
-        mpz_mul_si(R, R, 2);
-        mpz_gcd(temp, R, N);
+    // No need to check for co-prime condition as we know N is semiprime
+    while(mpz_cmp(R, N) <= 0){
+        mpz_mul(R, R, Rorig);
     }
 }
 
@@ -34,18 +36,21 @@ void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t
     mpz_init(T);
     mpz_set(T, Tconst);
     // perform the montgomery reduction
-    mpz_t m, Ninv;
+    mpz_t m, Ninv, temp;
     mpz_init(Ninv);
     mpz_init(m);
+    mpz_init(temp);
+    // Calculate bit length of R
+    long size = mpz_sizeinbase(R, 2);
     // setup m
     mpz_neg(Ninv, NinvConst);
-    mpz_mul(m, T, Ninv);
-    mpz_mod(m, m, R);
+    mpz_mul(temp, T, Ninv);
+    mpz_fdiv_r_2exp(m, temp, size-1); // Replace mod operation with remainder from bit shift
     // setup t
     mpz_mul(t, m, N);
-    mpz_add(t, t, T);
-    mpz_div(t, t, R);
-    // deal with mod operation efficiently
+    mpz_add(temp, t, T);
+    mpz_fdiv_q_2exp(t, temp, size-1); // We know R is an exact power of 2 so do a rightwards bit shift...
+
     if (mpz_cmp(t, N) >= 0){
         mpz_sub(t, t, N);
     }
