@@ -29,18 +29,16 @@ void montgomeryR(mpz_t R, const mpz_t N){
 }
 
 // This algorithm is the montgomery reduction algorithm
-void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t R){
+void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t R, const mpz_t NinvConst){
     mpz_t T;
     mpz_init(T);
     mpz_set(T, Tconst);
     // perform the montgomery reduction
-    mpz_t Ninv, m;
+    mpz_t m, Ninv;
     mpz_init(Ninv);
     mpz_init(m);
-    // find N^-1 mod R
-    modularInverse(Ninv, N, R);
     // setup m
-    mpz_neg(Ninv, Ninv);
+    mpz_neg(Ninv, NinvConst);
     mpz_mul(m, T, Ninv);
     mpz_mod(m, m, R);
     // setup t
@@ -54,24 +52,24 @@ void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t
 }
 
 // Given a and b in montgomery form it will compute and store (a*b) mod N in montgomery form.
-void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont, const mpz_t N, const mpz_t R){
+void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont, const mpz_t N, const mpz_t R, const mpz_t Ninv){
     mpz_t abRR;
     mpz_init(abRR);
 
     // compute aR * bR
     mpz_mul(abRR, aMont, bMont);
 
-    montgomeryReduction(abMont, abRR, N, R);
+    montgomeryReduction(abMont, abRR, N, R, Ninv);
 }
 
 // Given b in montgomery form and k in integer form. Will store b^k in montgomery form.
-void montgomeryExponentiation(mpz_t res, const mpz_t bConst, int k, const mpz_t N, const mpz_t R){
+void montgomeryExponentiation(mpz_t res, const mpz_t bConst, int k, const mpz_t N, const mpz_t R, const mpz_t Ninv){
     mpz_t b;
     mpz_init(b);
     mpz_set(b, bConst);
     mpz_set(res, b);
     for (int i = 1; i < k; i++){
-        montgomeryMultiplication(res, res, b, N, R);
+        montgomeryMultiplication(res, res, b, N, R, Ninv);
     }
 }
 

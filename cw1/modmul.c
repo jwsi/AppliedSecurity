@@ -29,17 +29,19 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
     // Precompute the values 1 -> 2^k - 1
     mpz_t *precomputed = malloc(sizeof(mpz_t) * (1 << (k-1)));
     mpz_init(precomputed[0]);
-    mpz_t R, xSquared;
+    mpz_t R, xSquared, Ninv;
     mpz_init(R);
     mpz_init(xSquared);
+    mpz_init(Ninv);
 
     montgomeryR(R, N);
     montgomeryForm(precomputed[0], x, N, R);
+    modularInverse(Ninv, N, R);
 
-    montgomeryMultiplication(xSquared, precomputed[0], precomputed[0], N, R);
+    montgomeryMultiplication(xSquared, precomputed[0], precomputed[0], N, R, Ninv);
     for (long i = 1; i < ((1<<(k-1))); i++){
         mpz_init(precomputed[i]);
-        montgomeryMultiplication(precomputed[i], precomputed[i-1], xSquared, N, R);
+        montgomeryMultiplication(precomputed[i], precomputed[i-1], xSquared, N, R, Ninv);
     } // E.g. to lookup x^5 -> (5-1)/2 = 2nd element in precomputed array
 
     mpz_set_si(t, 1);
@@ -70,13 +72,13 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
             abort();
         }
         unsigned long exponent = (1 << (i-l+1));
-        montgomeryExponentiation(t, t, exponent, N, R);
+        montgomeryExponentiation(t, t, exponent, N, R, Ninv);
         if (u != 0){
-            montgomeryMultiplication(t, t, precomputed[(u-1)/2], N, R);
+            montgomeryMultiplication(t, t, precomputed[(u-1)/2], N, R, Ninv);
         }
         i = l-1;
     }
-    montgomeryReduction(t, t, N, R);
+    montgomeryReduction(t, t, N, R, Ninv);
 }
 
 /* Perform stage 1:
