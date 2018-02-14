@@ -71,13 +71,20 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
             printf("Window size overflow. Reduce window size!\n");
             abort();
         }
+        // Perform montgomery exponentiation
         unsigned long exponent = (1 << (i-l+1));
-        montgomeryExponentiation(t, t, exponent, N, R, Ninv);
+        mpz_t tConst;
+        mpz_init(tConst);
+        mpz_set(tConst, t);
+        for (int i = 1; i < exponent; i++){
+            montgomeryMultiplication(t, t, tConst, N, R, Ninv);
+        }
         if (u != 0){
             montgomeryMultiplication(t, t, precomputed[(u-1)/2], N, R, Ninv);
         }
         i = l-1;
     }
+    // Convert back to integer form
     montgomeryReduction(t, t, N, R, Ninv);
 }
 

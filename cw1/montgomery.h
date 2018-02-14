@@ -19,9 +19,6 @@ void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t
 // Given a and b in montgomery form it will compute and store (a*b) mod N in montgomery form.
 void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont, const mpz_t N, const mpz_t R, const mpz_t Ninv);
 
-// Given b in montgomery form and k in integer form. Will store b^k in montgomery form.
-void montgomeryExponentiation(mpz_t res, const mpz_t bConst, int k, const mpz_t N, const mpz_t R, const mpz_t Ninv);
-
 // This function stores the montgomery form of integer a. I.e. aR (mod N)
 void montgomeryForm(mpz_t res, const mpz_t a, const mpz_t N, const mpz_t R);
 
