@@ -15,9 +15,9 @@ void modularInverse(mpz_t inv, const mpz_t a, const mpz_t N){
 void montgomeryR(mpz_t R, const mpz_t N){
     mpz_t Rorig;
     mpz_init(Rorig);
-    // Set original R to base size of processor (2^64)
+    // Set original R to base size of processor (2^64) in most cases
     mpz_set_si(Rorig, 2);
-    mpz_pow_ui(Rorig, Rorig, 64);
+    mpz_pow_ui(Rorig, Rorig, sizeof(mp_limb_t)*8);
     mpz_set(R, Rorig);
 
     if (mpz_fdiv_ui(N, 2) == 0){ // Cannot use an even N - protects against infinite loop!
