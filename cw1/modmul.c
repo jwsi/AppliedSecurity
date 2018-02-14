@@ -24,7 +24,7 @@ int getLength(mpz_t const number){
     return length;
 }
 
-// Perform sliding window exponentiation
+// Perform sliding window exponentiation using montgomery methods
 void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N, int k){
     // Precompute the values 1 -> 2^k - 1
     mpz_t *precomputed = malloc(sizeof(mpz_t) * (1 << (k-1)));
@@ -34,11 +34,10 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
     mpz_init(xSquared);
 
     montgomeryR(R, N);
-    // mpz_set(precomputed[0], x);
     montgomeryForm(precomputed[0], x, N, R);
 
     montgomeryMultiplication(xSquared, precomputed[0], precomputed[0], N, R);
-    for (int i = 1; i < ((1<<(k-1))); i++){
+    for (long i = 1; i < ((1<<(k-1))); i++){
         mpz_init(precomputed[i]);
         montgomeryMultiplication(precomputed[i], precomputed[i-1], xSquared, N, R);
     } // E.g. to lookup x^5 -> (5-1)/2 = 2nd element in precomputed array
@@ -66,13 +65,13 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
             }
         }
         // t^(2^(i-l+1))
+        if ((i-l+1) > 64){
+            printf("Window size overflow. Reduce window size!\n");
+            abort();
+        }
         unsigned long exponent = (1 << (i-l+1));
-        // mpz_pow_ui(t, t, exponent);
-        // mpz_mod(t, t, N);
         montgomeryExponentiation(t, t, exponent, N, R);
         if (u != 0){
-            // mpz_mul(t, t, precomputed[(u-1)/2]);
-            // mpz_mod(t, t, N);
             montgomeryMultiplication(t, t, precomputed[(u-1)/2], N, R);
         }
         i = l-1;
@@ -111,8 +110,7 @@ void stage1() {
         }
 
         // Compute ciphertext : c = m^e (mod N)
-        windowedExponentiation(c, m, e, N, 5);
-        // mpz_powm (c, m, e, N); // gmp method
+        windowedExponentiation(c, m, e, N, 4);
         gmp_printf( "%ZX\n", c );
     }
 
@@ -185,8 +183,6 @@ void stage2() {
         // m2 = c^(d mod q-1) mod q = (c mod q)^dq (mod q)
         windowedExponentiation(m1, c, dp, p, 5);
         windowedExponentiation(m2, c, dq, q, 5);
-        // mpz_powm(m1, c, dp, p); // original gmp modular exponentiation
-        // mpz_powm(m2, c, dq, q);
 
         // h = qInv * (m1 - m2 + p) mod p (add p to keep result positive)
         mpz_sub(h, m1, m2);
@@ -254,8 +250,8 @@ void stage3() {
     fclose(random);
 
     // Alternatively:
-    // arc4random_buf(&test, sizeof test); // BSD Distros
-    // getrandom(seed, sizeof seed) // Linux Distros
+    // arc4random_buf // BSD Distros
+    // getrandom // Linux Distros
 
     gmp_randseed(randState, mpzSeed); // seed the random state
 
@@ -285,11 +281,9 @@ void stage3() {
 
         // Encyrption : c1 = g^r (mod p)
         windowedExponentiation(c1, g, r, p, 5);
-        // mpz_powm (c1, g, r, p); // random r
 
         // Encryption : c2 = m * h^r (mod p)
         windowedExponentiation(c2, h, r, p, 5);
-        // mpz_powm (c2, h, r, p);
         mpz_mul (c2, m, c2);
         mpz_mod (c2, c2, p);
 
@@ -361,7 +355,6 @@ void stage4() {
         mpz_neg(x, x);
         mpz_mod(x, x, q); // sliding window cannot handle negative exponents
         windowedExponentiation(m, c1, x, p, 5);
-        // mpz_powm(m, c1, x, p);
         mpz_mul (m, m, c2);
         mpz_mod (m, m, p);
 
