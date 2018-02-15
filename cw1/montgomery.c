@@ -3,12 +3,12 @@
 // This stores the inverse of a mod N in inv. Algorithm only completes if gcd(a, N) == 1.
 void modularInverse(mpz_t inv, const mpz_t a, const mpz_t N){
     mpz_t g, t;
-    mpz_init(g);
-    mpz_init(t);
+    mpz_inits( g, t, NULL );
     mpz_gcdext(g, inv, t, a, N); // set inv to modular inverse of a mod N.
     if (mpz_cmp_si (g, 1) != 0){ // Check to ensure gcd(a, N) is 1 (i.e. co-prime)
         abort();
     }
+    mpz_clears( g, t, NULL );
 }
 
 // Finds appropriate value of R for montgomery calculations
@@ -24,22 +24,19 @@ void montgomeryR(mpz_t R, const mpz_t N){
         abort();
     }
 
-    // No need to check for co-prime condition as we know N is semiprime
+    // No need to check for co-prime condition as we know N is a semiprime
     while(mpz_cmp(R, N) <= 0){
         mpz_mul(R, R, Rorig);
     }
+    mpz_clear(Rorig);
 }
 
 // This algorithm is the montgomery reduction algorithm
 void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t R, const mpz_t NinvConst){
-    mpz_t T;
-    mpz_init(T);
+    mpz_t T, m, Ninv, temp;
+    mpz_inits(T, Ninv, m, temp, NULL);
     mpz_set(T, Tconst);
-    // perform the montgomery reduction
-    mpz_t m, Ninv, temp;
-    mpz_init(Ninv);
-    mpz_init(m);
-    mpz_init(temp);
+    // perform the montgomery reduction (unravel loop in Dan Page algorithm in slides)
     // Calculate bit length of R
     long size = mpz_sizeinbase(R, 2);
     // setup m
@@ -54,6 +51,7 @@ void montgomeryReduction(mpz_t t, const mpz_t Tconst, const mpz_t N, const mpz_t
     if (mpz_cmp(t, N) >= 0){
         mpz_sub(t, t, N);
     }
+    mpz_clears(T, Ninv, m, temp, NULL);
 }
 
 // Given a and b in montgomery form it will compute and store (a*b) mod N in montgomery form.
@@ -65,6 +63,7 @@ void montgomeryMultiplication(mpz_t abMont, const mpz_t aMont, const mpz_t bMont
     mpz_mul(abRR, aMont, bMont);
 
     montgomeryReduction(abMont, abRR, N, R, Ninv);
+    mpz_clear(abRR);
 }
 
 // This function stores the montgomery form of integer a. I.e. aR (mod N)

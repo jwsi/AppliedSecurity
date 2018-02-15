@@ -28,11 +28,8 @@ int getLength(mpz_t const number){
 void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N, int k){
     // Precompute the values 1 -> 2^k - 1
     mpz_t *precomputed = malloc(sizeof(mpz_t) * (1 << (k-1)));
-    mpz_init(precomputed[0]);
-    mpz_t R, xSquared, Ninv;
-    mpz_init(R);
-    mpz_init(xSquared);
-    mpz_init(Ninv);
+    mpz_t R, xSquared, Ninv, tConst;
+    mpz_inits( precomputed[0], R, xSquared, Ninv, tConst, NULL );
 
     montgomeryR(R, N);
     montgomeryForm(precomputed[0], x, N, R);
@@ -42,7 +39,7 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
     for (long i = 1; i < ((1<<(k-1))); i++){
         mpz_init(precomputed[i]);
         montgomeryMultiplication(precomputed[i], precomputed[i-1], xSquared, N, R, Ninv);
-    } // E.g. to lookup x^5 -> (5-1)/2 = 2nd element in precomputed array
+    }
 
     mpz_set_si(t, 1);
     montgomeryForm(t, t, N, R);
@@ -73,8 +70,6 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
         }
         // Perform montgomery exponentiation
         unsigned long exponent = (1 << (i-l+1));
-        mpz_t tConst;
-        mpz_init(tConst);
         mpz_set(tConst, t);
         for (int i = 1; i < exponent; i++){
             montgomeryMultiplication(t, t, tConst, N, R, Ninv);
@@ -86,6 +81,8 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
     }
     // Convert back to integer form
     montgomeryReduction(t, t, N, R, Ninv);
+    mpz_clears( precomputed[0], R, xSquared, Ninv, tConst, NULL );
+    free(precomputed);
 }
 
 /* Perform stage 1:
@@ -98,10 +95,7 @@ void windowedExponentiation(mpz_t t, const mpz_t x, const mpz_t y, const mpz_t N
 void stage1() {
     // Initialise the required multi precision integer variables
     mpz_t N, e, m, c;
-    mpz_init( N );
-    mpz_init( e );
-    mpz_init( m );
-    mpz_init( c );
+    mpz_inits( N, e, m, c, NULL );
 
     /* For each challenge in the input:
        Read in N, e and m. (%ZX to read in upper-case hex).
@@ -124,10 +118,7 @@ void stage1() {
     }
 
     // Free the multi precision variables
-    mpz_clear( N );
-    mpz_clear( e );
-    mpz_clear( m );
-    mpz_clear( c );
+    mpz_clears( N, e, m, c, NULL );
 }
 
 /* Perform stage 2:
@@ -140,19 +131,7 @@ void stage1() {
 void stage2() {
     // Initialise the required multi precision integer variables
     mpz_t N, d, p, q, dp, dq, pInv, qInv, c, m, m1, m2, h;
-    mpz_init ( N );
-    mpz_init ( d );
-    mpz_init ( p );
-    mpz_init ( q );
-    mpz_init ( dp );
-    mpz_init ( dq );
-    mpz_init ( pInv );
-    mpz_init ( qInv );
-    mpz_init ( c );
-    mpz_init ( m );
-    mpz_init ( m1 );
-    mpz_init ( m2 );
-    mpz_init ( h );
+    mpz_inits( N, d, p, q, dp, dq, pInv, qInv, c, m, m1, m2, h, NULL );
 
     /* For each challenge in the input:
        Read in N, d, p, q, dp, dq, ip, iq and c. (%ZX to read in upper-case hex).
@@ -207,19 +186,7 @@ void stage2() {
     }
 
     // Free the multi precision variables
-    mpz_clear( N );
-    mpz_clear( d );
-    mpz_clear( p );
-    mpz_clear( q );
-    mpz_clear( dp );
-    mpz_clear( dq );
-    mpz_clear( pInv );
-    mpz_clear( qInv );
-    mpz_clear( c );
-    mpz_clear( m );
-    mpz_clear( m1 );
-    mpz_clear( m2 );
-    mpz_clear( h );
+    mpz_clears( N, d, p, q, dp, dq, pInv, qInv, c, m, m1, m2, h, NULL );
 }
 
 /* Perform stage 3:
@@ -232,14 +199,7 @@ void stage2() {
 void stage3() {
     // Initialise the required multi precision integer variables
     mpz_t p, q, g, h, m, r, c1, c2;
-    mpz_init ( p );
-    mpz_init ( q );
-    mpz_init ( g );
-    mpz_init ( h );
-    mpz_init ( m );
-    mpz_init ( r );
-    mpz_init ( c1 );
-    mpz_init ( c2 );
+    mpz_inits( p, q, g, h, m, r, c1, c2, NULL );
 
     gmp_randstate_t randState;
     gmp_randinit_mt (randState);
@@ -288,7 +248,7 @@ void stage3() {
         // Compute random integer for encryption
         mpz_urandomm (r, randState, q);
 
-        // Encyrption : c1 = g^r (mod p)
+        // Encryption : c1 = g^r (mod p)
         windowedExponentiation(c1, g, r, p, 5);
 
         // Encryption : c2 = m * h^r (mod p)
@@ -296,25 +256,12 @@ void stage3() {
         mpz_mul (c2, m, c2);
         mpz_mod (c2, c2, p);
 
-        // fixed r = 1
-        // mpz_mul (c2, m, h);
-        // mpz_mod (c2, c2, p);
-
-        // gmp_printf( "%ZX\n", g); // for r = 1
-        gmp_printf( "%ZX\n", c1); // for random r
+        gmp_printf( "%ZX\n", c1);
         gmp_printf( "%ZX\n", c2);
     }
 
     // Free the multi precision variables
-    mpz_clear( p );
-    mpz_clear( q );
-    mpz_clear( g );
-    mpz_clear( h );
-    mpz_clear( m );
-    mpz_clear ( r );
-    mpz_clear ( c1 );
-    mpz_clear ( c2 );
-
+    mpz_clears( p, q, g, h, m, r, c1, c2, NULL );
     gmp_randclear( randState );
 }
 
@@ -328,13 +275,7 @@ void stage3() {
 void stage4() {
     // Initialise the required multi precision integer variables
     mpz_t p, q, g, x, c1, c2, m;
-    mpz_init ( p );
-    mpz_init ( q );
-    mpz_init ( g );
-    mpz_init ( x );
-    mpz_init ( c1 );
-    mpz_init ( c2 );
-    mpz_init ( m );
+    mpz_inits( p, q, g, x, c1, c2, m, NULL );
 
     /* For each challenge in the input:
        Read in p, q, g, x, c1 and c2. (%ZX to read in upper-case hex).
@@ -372,13 +313,7 @@ void stage4() {
     }
 
     // Free the multi precision variables
-    mpz_clear( p );
-    mpz_clear( q );
-    mpz_clear( g );
-    mpz_clear( x );
-    mpz_clear ( c1 );
-    mpz_clear ( c2 );
-    mpz_clear ( m );
+    mpz_clears( p, q, g, x, c1, c2, m, NULL );
 }
 
 /* The main function acts as a driver for the assignment by simply invoking the
