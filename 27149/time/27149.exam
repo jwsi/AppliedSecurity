@@ -1,0 +1,15 @@
+Q.1 The vendor of the attack target is concerned that news of this attack
+    could scare off potential customers; they will make any alteration
+    necessary (in software or hardware) to prevent the attack.  Explain the
+    options they have, and which one you would recommend.
+Q.2 The vendor of the attack target is concerned that a similar attack may
+    also apply to their implementation of ElGamal encryption.  Explain the
+    potential for such an attack, and how it differs wrt.  the case of RSA.
+Q.4 Numerous factors might produce noise within measurements of execution
+    time: based on the given attack target and context, outline at least
+    two examples.
+Q.7 Imagine the attack target vendor asks you to update the implementation
+    of binary exponentiation with a windowed alternative.  Which algorithm
+    would you recommend they use?  Discuss the advantages/disadvantages of
+    your choice in terms of latency, memory footprint, and (side-channel)
+    security.
