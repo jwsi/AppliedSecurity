@@ -13,34 +13,22 @@ def getParams(file):
     print "N (RSA Modulus): " + str(N)
     e = int(conf.readline(), 16)
     print "e (public exponent): " + str(e)
-    l = conf.readline()
-    print "l (octal OAEP label): " + str(l[:-1])
-    c = conf.readline()
-    print "c (octal ciphertext): " + str(c[:-1])
+    l = conf.readline()[:-1]
+    print "l (octal OAEP label): " + str(l)
+    c = conf.readline()[:-1]
+    print "c (octal ciphertext): " + str(c)
     conf.close()
     return (N, e, l, c)
 
-def interact(G):
+def communicate(l, c):
     # Send G to attack target.
-    target_in.write("%s\n" % (G));
-    target_in.flush()
+    target.stdin.write(l + "\n")
+    target.stdin.write(c + "\n")
+    target.stdin.flush()
 
     # Receive ( t, r ) from attack target.
-    t = int(target_out.readline().strip())
-    r = int(target_out.readline().strip())
-    return (t, r)
-
-def attack():
-    # Select a hard-coded guess ...
-    G = "guess"
-
-    # ... then interact with the attack target.
-    (t, r) = interact(G)
-
-    # Print all of the inputs and outputs.
-    print "G = %s" % (G)
-    print "t = %d" % (t)
-    print "r = %d" % (r)
+    result = int(target.stdout.readline().strip())
+    return result
 
 if (__name__ == "__main__"):
     # Read in and parse the config file
@@ -48,6 +36,9 @@ if (__name__ == "__main__"):
 
     print sys.argv[1]
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+
+    result = communicate(l, c)
+    print result
     #
     # # Construct handles to attack target standard input and output.
     # target_out = target.stdout
