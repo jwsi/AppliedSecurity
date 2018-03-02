@@ -52,13 +52,11 @@ def step2(target, l, f1, e, c, N, B):
     f2 = int(math.floor(Decimal (N+B)/B) * f1/2)
     challenge = pow(f2, e, N)
     challenge = (challenge * c) % N
-    print hex(challenge)[2:-1].upper()
     resultCode = communicate(target, l, challenge)
     while resultCode == 1:
         f2 = f2 + (f1 / 2)
         challenge = pow(f2, e, N)
         challenge = (challenge * c) % N
-        print hex(challenge)[2:-1].upper()
         resultCode = communicate(target, l, challenge)
     print "f2 = " + str(f2) + "\n"
     return f2
@@ -66,20 +64,26 @@ def step2(target, l, f1, e, c, N, B):
 
 def step3(target, l, f2, e, c, N, B, k):
     print "Starting step 3 of the attack..."
-    m_min = int(math.ceil( Decimal   (N) /f2 ))
-    m_max = int(math.floor(Decimal  (N+B)/f2 ))
+    m_min = ceil( N, f2 )
+    m_max = floor( (N+B), f2 )
     while m_min != m_max:
-        f_tmp = int(math.floor(Decimal  (2 * B) / (m_max - m_min) ))
-        i     = int(math.floor(Decimal  (f_tmp * m_min) / N       ))
-        f3    = int(math.ceil( Decimal  (i * N) / m_min           ))
+        f_tmp = floor( (2 * B),         (m_max - m_min) )
+        i     = floor( (f_tmp * m_min), N               )
+        f3    = ceil(  (i * N),         m_min           )
+        print f_tmp
+        print i
+        print f3
+
         challenge = pow(f3, e, N)
         challenge = (challenge * c) % N
         resultCode = communicate(target, l, challenge)
+        print resultCode
+        print ""
         if resultCode == 1:
-            m_min = int(math.ceil(  (i * N + B)/f3 ))
+            m_min = ceil(  (i * N + B), f3 )
         else:
-            m_max = int(math.floor( (i * N + B)/f3 ))
-        print m_max - m_min
+            m_max = floor( (i * N + B), f3 )
+        # print m_max - m_min
 
     challenge = pow(m_max, e, N)
     print c
@@ -88,6 +92,20 @@ def step3(target, l, f2, e, c, N, B, k):
 
     print resultCode
     print "f3 = " + str(f3) + "\n"
+
+# Returns the floor of a/b
+def floor(a, b):
+    mod = a % b
+    multiple = a - mod
+    return multiple / b
+
+# Returns the ceiling of a/b
+def ceil(a, b):
+    mod = a % b
+    multiple = a - mod
+    if mod == 0:
+        return multiple/b
+    return multiple/b + 1
 
 
 
