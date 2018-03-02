@@ -45,7 +45,7 @@ def step1(target, e, c, l, N):
     return f1
 
 
-def step2(target, l, f1, N):
+def step2(target, l, f1, e, c, N):
     print "Starting step 2 of the attack..."
     # Now f1*m is in [B, 2B] therefore f1/2 * m is in [B/2, B]
     k = int(math.ceil(math.log(N, 256)))
@@ -53,10 +53,17 @@ def step2(target, l, f1, N):
     f2 = int(math.floor(float(N+B)/B) * f1/2)
     resultCode = 1
     while resultCode == 1:
-        resultCode = communicate(target, l, f2)
+        challenge = pow(f2, e, N)
+        challenge = (challenge * c) % N
+        resultCode = communicate(target, l, challenge)
         f2 = f2 + f1/2
     print "f2 = " + str(f2) + "\n"
     return f2
+
+def step3(target, l, f2, N):
+    pass
+
+
 
 
 
@@ -70,7 +77,7 @@ def main():
     # Spin up a subprocess.
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     f1 = step1(target, e, c, l, N)
-    step2(target, l, f1, N)
+    step2(target, l, f1, e, c, N)
 
 
 if (__name__ == "__main__"):
