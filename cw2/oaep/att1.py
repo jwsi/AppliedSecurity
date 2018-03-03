@@ -7,13 +7,13 @@ interactions = 0
 def getParams(file):
     print "Attempting to parse the config file..."
     conf = open(file, "r")
-    N = int(conf.readline(), 16)
+    N = int(conf.readline().strip(), 16)
     print "N (RSA Modulus): "      + str(N)
-    e = int(conf.readline(), 16)
+    e = int(conf.readline().strip(), 16)
     print "e (public exponent): "  + str(e)
-    l = int(conf.readline(), 16)
+    l = int(conf.readline().strip(), 16)
     print "l (octet OAEP label): " + "{0:X}".format(l)
-    c = int(conf.readline(), 16)
+    c = int(conf.readline().strip(), 16)
     print "c (octet ciphertext): " + "{0:0256X}".format(c)
     conf.close()
     return (N, e, l, c)
@@ -23,8 +23,8 @@ def getParams(file):
 def communicate(target, l, c):
     global interactions
     # Send label & ciphertext to attack target.
-    ctxt  = hex(c)[2:-1].upper().zfill(256)
-    label = hex(l)[2:-1].upper().zfill(256)
+    ctxt  = "{0:0256X}".format(c)
+    label = "{0:0256X}".format(l)
     target.stdin.write(label + "\n")
     target.stdin.write(ctxt  + "\n")
     target.stdin.flush()
@@ -104,13 +104,13 @@ def divCeil(a, b):
     return multiple/b + 1
 
 
-def OAEPDecode(EM, L, k):
+def OAEPDecode(EM, L):
     EM = "{0:0256X}".format(EM)
     if L is None:
         L = ""
     else:
         L = "{0:X}".format(L)
-    lHash = hashlib.sha1(L).hexdigest().upper()
+    lHash = hashlib.sha1(L.decode('hex')).hexdigest().upper()
     hLen = len(lHash)
     Y = EM[0:2]
     maskedSeed = EM[2:hLen+2] # SHA1 = 160bit => 40 hex symbols
@@ -121,15 +121,14 @@ def OAEPDecode(EM, L, k):
     DB = hexXOR(maskedDB, dbMask)
 
     lHashMK2 = DB[:40]
+    paddedM = DB[40:].split("01")
 
-    # Checks
-    if Y != "00":
+    # # Checks
+    if Y != "00" or lHash != lHashMK2 or len(paddedM) < 2:
         raise Exception("decryption error")
-    if lHash != lHashMK2:
-        raise Exception("decryption error")
-    print lHash
-    print DB[:40]
-    print DB[40:]
+
+    # Output message
+    print paddedM[-1]
 
 
 def MGF1(Z, l):
@@ -140,14 +139,15 @@ def MGF1(Z, l):
     T = ""
     for counter in range(0, divCeil(l, hLen)):
         C = "{0:08X}".format(counter)
-        T = T + hashlib.sha1(Z + C).hexdigest().upper()
+        T = T + hashlib.sha1((Z + C).decode('hex')).hexdigest().upper()
     return T[0:l]
 
 
 def hexXOR(a, b):
     a_int = int(a, 16)
     b_int = int(b, 16)
-    return "{0:X}".format(a_int ^ b_int)
+    pad = str(max(len(a), len(b)))
+    return ("{0:0" + pad + "X}").format(a_int ^ b_int)
 
 
 # This is the main function
@@ -162,7 +162,7 @@ def main():
     f1 = step1(target, e, c, l, N)
     f2 = step2(target, l, f1, e, c, N, B)
     encoded_m = step3(target, l, f2, e, c, N, B, k)
-    OAEPDecode(encoded_m, l, k)
+    OAEPDecode(encoded_m, l)
     # Decode the message
     # Print the number of oracle interactions required
     print interactions
