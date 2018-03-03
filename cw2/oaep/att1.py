@@ -132,19 +132,6 @@ def OAEPDecode(EM, L, k):
     print DB[40:]
 
 
-# g. Separate DB into an octet string lHash' of length hLen, a
-#          (possibly empty) padding string PS consisting of octets with
-#          hexadecimal value 0x00, and a message M as
-#
-#             DB = lHash' || PS || 0x01 || M.
-#
-#          If there is no octet with hexadecimal value 0x01 to separate PS
-#          from M, if lHash does not equal lHash', or if Y is nonzero,
-#          output "decryption error" and stop.  (See the note below.)
-#
-#    4. Output the message M.
-
-
 def MGF1(Z, l):
     hLen = hashlib.sha1("").digest_size * 2 # Digest size of SHA1 in hex
     if l > pow(2, 32) * hLen:
@@ -161,8 +148,6 @@ def hexXOR(a, b):
     a_int = int(a, 16)
     b_int = int(b, 16)
     return "{0:X}".format(a_int ^ b_int)
-
-
 
 
 # This is the main function
