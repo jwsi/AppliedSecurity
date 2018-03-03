@@ -1,5 +1,4 @@
-import sys, subprocess, math, hashlib
-from decimal import Decimal
+import sys, subprocess, math
 
 
 # This function extracts parameters from a config file
@@ -11,9 +10,9 @@ def getParams(file):
     e = int(conf.readline(), 16)
     print "e (public exponent): "  + str(e)
     l = int(conf.readline(), 16)
-    print "l (octal OAEP label): " + str(l)
+    print "l (octet OAEP label): " + str(l)
     c = int(conf.readline(), 16)
-    print "c (octal ciphertext): " + str(c) + "\n"
+    print "c (octet ciphertext): " + str(c) + "\n"
     conf.close()
     return (N, e, l, c)
 
@@ -32,79 +31,72 @@ def communicate(target, l, c):
     return result
 
 
+# This function performs step 1 from Manger's paper
 def step1(target, e, c, l, N):
-    # We know m is in [0, B] and f1 * m is in [0, 2B]
     print "Starting step 1 of the attack..."
     f1 = 1
     resultCode = 0
     while resultCode != 1:
         f1 = f1 * 2
-        challenge = pow(f1, e, N)
-        challenge = (challenge * c) % N
+        challenge  = pow(f1, e, N)
+        challenge  = (challenge * c) % N
         resultCode = communicate(target, l, challenge)
     print "f1 = " + str(f1) + "\n"
     return f1
 
 
+# This function performs step 2 from Manger's paper
 def step2(target, l, f1, e, c, N, B):
     print "Starting step 2 of the attack..."
-    # Now f1*m is in [B, 2B] therefore f1/2 * m is in [B/2, B]
-    f2 = int(math.floor(Decimal (N+B)/B) * f1/2)
-    challenge = pow(f2, e, N)
-    challenge = (challenge * c) % N
+    f2 = divFloor((N+B), B) * (f1 / 2)
+    challenge  = pow(f2, e, N)
+    challenge  = (challenge * c) % N
     resultCode = communicate(target, l, challenge)
     while resultCode == 1:
         f2 = f2 + (f1 / 2)
-        challenge = pow(f2, e, N)
-        challenge = (challenge * c) % N
+        challenge  = pow(f2, e, N)
+        challenge  = (challenge * c) % N
         resultCode = communicate(target, l, challenge)
     print "f2 = " + str(f2) + "\n"
     return f2
 
 
+# This function performs step 3 from Manger's paper
 def step3(target, l, f2, e, c, N, B, k):
     print "Starting step 3 of the attack..."
-    m_min = ceil( N, f2 )
-    m_max = floor( (N+B), f2 )
+    m_min = divCeil ( N    , f2 )
+    m_max = divFloor( (N+B), f2 )
     while m_min != m_max:
-        f_tmp = floor( (2 * B),         (m_max - m_min) )
-        i     = floor( (f_tmp * m_min), N               )
-        f3    = ceil(  (i * N),         m_min           )
-        print f_tmp
-        print i
-        print f3
+        f_tmp = divFloor( (2 * B)        , (m_max - m_min) )
+        i     = divFloor( (f_tmp * m_min), N               )
+        f3    = divCeil ( (i * N)        , m_min           )
 
-        challenge = pow(f3, e, N)
-        challenge = (challenge * c) % N
+        challenge  = pow(f3, e, N)
+        challenge  = (challenge * c) % N
         resultCode = communicate(target, l, challenge)
-        print resultCode
-        print ""
+
         if resultCode == 1:
-            m_min = ceil(  (i * N + B), f3 )
+            m_min = divCeil ( (i * N + B), f3 )
         else:
-            m_max = floor( (i * N + B), f3 )
-        # print m_max - m_min
+            m_max = divFloor( (i * N + B), f3 )
+    print "f3 = " + str(f3)
+    print "encoded plaintext (octet string): " + hex(c)[2:-1].upper().zfill(256) + "\n"
+    return m_max
 
-    challenge = pow(m_max, e, N)
-    print c
-    print challenge
-    print hex(m_max)[2:-1].upper()
 
-    print resultCode
-    print "f3 = " + str(f3) + "\n"
-
-# Returns the floor of a/b
-def floor(a, b):
+# This function returns the floor of a/b
+def divFloor(a, b):
     mod = a % b
     multiple = a - mod
     return multiple / b
 
-# Returns the ceiling of a/b
-def ceil(a, b):
+
+# This function returns the ceiling of a/b
+def divCeil(a, b):
     mod = a % b
-    multiple = a - mod
     if mod == 0:
-        return multiple/b
+        return a/b
+    multiple = a - mod
     return multiple/b + 1
 
 
@@ -117,10 +109,11 @@ def main():
     B = pow(2, (8 * (k - 1)))
     # Spin up a subprocess.
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
-
+    # Perform the attack
     f1 = step1(target, e, c, l, N)
     f2 = step2(target, l, f1, e, c, N, B)
-    step3(target, l, f2, e, c, N, B, k)
+    encoded_m = step3(target, l, f2, e, c, N, B, k)
+    # Decode the message
 
 
 if (__name__ == "__main__"):
