@@ -1,5 +1,7 @@
 import sys, subprocess, math
 
+# Define global variable for interactions with oracle
+interactions = 0
 
 # This function extracts parameters from a config file
 def getParams(file):
@@ -19,6 +21,7 @@ def getParams(file):
 
 # This function communicates with the attack target
 def communicate(target, l, c):
+    global interactions
     # Send label & ciphertext to attack target.
     ctxt  = hex(c)[2:-1].upper().zfill(256)
     label = hex(l)[2:-1].upper().zfill(256)
@@ -28,6 +31,7 @@ def communicate(target, l, c):
 
     # Receive result code from attack target.
     result = int(target.stdout.readline().strip())
+    interactions += 1
     return result
 
 
@@ -114,6 +118,8 @@ def main():
     f2 = step2(target, l, f1, e, c, N, B)
     encoded_m = step3(target, l, f2, e, c, N, B, k)
     # Decode the message
+    # Print the number of oracle interactions required
+    print interactions
 
 
 if (__name__ == "__main__"):
