@@ -1,4 +1,4 @@
-import sys, subprocess, math
+import sys, subprocess, math, hashlib
 
 # Define global variable for interactions with oracle
 interactions = 0
@@ -12,9 +12,9 @@ def getParams(file):
     e = int(conf.readline(), 16)
     print "e (public exponent): "  + str(e)
     l = int(conf.readline(), 16)
-    print "l (octet OAEP label): " + hex(l)[2:-1].upper()
+    print "l (octet OAEP label): " + "{0:X}".format(l)
     c = int(conf.readline(), 16)
-    print "c (octet ciphertext): " + hex(c)[2:-1].upper()
+    print "c (octet ciphertext): " + "{0:0256X}".format(c)
     conf.close()
     return (N, e, l, c)
 
@@ -84,7 +84,7 @@ def step3(target, l, f2, e, c, N, B, k):
         else:
             m_max = divFloor( (i * N + B), f3 )
     print "f3 = " + str(f3)
-    print "encoded plaintext (octet string): " + hex(m_max)[2:-1].upper().zfill(256) + "\n"
+    print "encoded plaintext (octet string): " + "{0:0256X}".format(m_max) + "\n"
     return m_max
 
 
@@ -104,6 +104,66 @@ def divCeil(a, b):
     return multiple/b + 1
 
 
+def OAEPDecode(EM, L, k):
+    EM = "{0:0256X}".format(EM)
+    if L is None:
+        L = ""
+    else:
+        L = "{0:X}".format(L)
+    lHash = hashlib.sha1(L).hexdigest().upper()
+    hLen = len(lHash)
+    Y = EM[0:2]
+    maskedSeed = EM[2:hLen+2] # SHA1 = 160bit => 40 hex symbols
+    maskedDB = EM[hLen+2:]
+    seedMask = MGF1(maskedDB, hLen)
+    seed = hexXOR(maskedSeed, seedMask)
+    dbMask = MGF1(seed, len(maskedDB))
+    DB = hexXOR(maskedDB, dbMask)
+
+    lHashMK2 = DB[:40]
+
+    # Checks
+    if Y != "00":
+        raise Exception("decryption error")
+    if lHash != lHashMK2:
+        raise Exception("decryption error")
+    print lHash
+    print DB[:40]
+    print DB[40:]
+
+
+# g. Separate DB into an octet string lHash' of length hLen, a
+#          (possibly empty) padding string PS consisting of octets with
+#          hexadecimal value 0x00, and a message M as
+#
+#             DB = lHash' || PS || 0x01 || M.
+#
+#          If there is no octet with hexadecimal value 0x01 to separate PS
+#          from M, if lHash does not equal lHash', or if Y is nonzero,
+#          output "decryption error" and stop.  (See the note below.)
+#
+#    4. Output the message M.
+
+
+def MGF1(Z, l):
+    hLen = hashlib.sha1("").digest_size * 2 # Digest size of SHA1 in hex
+    if l > pow(2, 32) * hLen:
+        print "mask too long..."
+        exit(1)
+    T = ""
+    for counter in range(0, divCeil(l, hLen)):
+        C = "{0:08X}".format(counter)
+        T = T + hashlib.sha1(Z + C).hexdigest().upper()
+    return T[0:l]
+
+
+def hexXOR(a, b):
+    a_int = int(a, 16)
+    b_int = int(b, 16)
+    return "{0:X}".format(a_int ^ b_int)
+
+
+
 
 # This is the main function
 def main():
@@ -117,6 +177,7 @@ def main():
     f1 = step1(target, e, c, l, N)
     f2 = step2(target, l, f1, e, c, N, B)
     encoded_m = step3(target, l, f2, e, c, N, B, k)
+    OAEPDecode(encoded_m, l, k)
     # Decode the message
     # Print the number of oracle interactions required
     print interactions
