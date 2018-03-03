@@ -16,7 +16,7 @@
 So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
-effort : stage 1 -> [...] hours
+effort : stage 1 -> [19] hours
 effort : stage 2 -> [...] hours
 effort : stage 3 -> [...] hours
 effort : stage 4 -> [...] hours
@@ -31,7 +31,15 @@ by the assignment description of course).  Let us know what third-party
 source code or resources you used (if any) so it's clear what's your work
 and what isn't:
 
-[...]
+[
+    stage1:
+        RSA-OAEP CCA attack:
+            http://archiv.infsec.ethz.ch/education/fs08/secsem/Manger01.pdf
+        OAEP Decoding:
+            https://tools.ietf.org/html/rfc3447#section-7.1.1
+        MGF1 Algorithm:
+            https://tools.ietf.org/html/rfc2437#section-10.2.1
+]
 
 -------------------------------------------------------------------------------
 
