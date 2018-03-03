@@ -12,9 +12,9 @@ def getParams(file):
     e = int(conf.readline(), 16)
     print "e (public exponent): "  + str(e)
     l = int(conf.readline(), 16)
-    print "l (octet OAEP label): " + str(l)
+    print "l (octet OAEP label): " + hex(l)[2:-1].upper()
     c = int(conf.readline(), 16)
-    print "c (octet ciphertext): " + str(c) + "\n"
+    print "c (octet ciphertext): " + hex(c)[2:-1].upper()
     conf.close()
     return (N, e, l, c)
 
@@ -84,7 +84,7 @@ def step3(target, l, f2, e, c, N, B, k):
         else:
             m_max = divFloor( (i * N + B), f3 )
     print "f3 = " + str(f3)
-    print "encoded plaintext (octet string): " + hex(c)[2:-1].upper().zfill(256) + "\n"
+    print "encoded plaintext (octet string): " + hex(m_max)[2:-1].upper().zfill(256) + "\n"
     return m_max
 
 
