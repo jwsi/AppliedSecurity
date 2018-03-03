@@ -87,8 +87,8 @@ def step3(target, l, f2, e, c, N, B, k):
             m_min = divCeil ( (i * N + B), f3 )
         else:
             m_max = divFloor( (i * N + B), f3 )
-    print "COMPLETE! This took " + str(interactions - startInteractions) + " oracle queries."
-    print "encoded plaintext (octet string): " + "{0:0256X}".format(m_max) + "\n"
+    print "COMPLETE! This took " + str(interactions - startInteractions) + " oracle queries.\n"
+    print "encoded plaintext (octet string): " + "{0:0256X}".format(m_max)
     return m_max
 
 
@@ -133,7 +133,7 @@ def OAEPDecode(EM, L):
     if Y != "00" or lHash != lHashMK2 or len(paddedM) < 2:
         raise Exception("decryption error")
     # Return the message
-    print "COMPLETE!"
+    print "COMPLETE!\n"
     return paddedM[1]
 
 
