@@ -1,10 +1,21 @@
 Q.1 Consider the parameters N = 3551, e = 5, d = 1373, and c = 888, all
     represented in decimal.  Use them to explain, in your own words, the
     principle of this attack (e.g., how and why it works).
+
 Q.2 To prevent the attack, the vendor suggests altering the software: the
     idea is that no matter what error occurs, the same error code will be
     produced.  Explain whether (and why, or why not) this change alone is
     sufficient.
+
+    This change alone is sufficient because all the steps in the attack
+    algorithm from Manger's paper rely on knowing whether the ciphertext
+    sent to the oracle is larger or smaller than B. B is the value of
+    2^8(k-1) where k is the size of the RSA modulus N, in octets (bytes).
+    If the oracle didn't reveal this information to the adversary, then this
+    attack wouldn't be possible as no information about the length of the
+    ciphertext relative to B would be shared. So in short, masking all the
+    error codes to be the same (i.e. Decryption Error) would mitigate against
+    this attack.
 
 Q.4 This attack is based on the fact that decrypting a ciphertext of the
     form c = (f^e)*c' mod N produces a plaintext of the form f*m' mod N.
@@ -14,7 +25,8 @@ Q.4 This attack is based on the fact that decrypting a ciphertext of the
     To decrypt we raise c to the power of d (the private key)...
     c^d ≡ ((f^e) * c')^d (mod N)
     c^d ≡ ((f^e)^d) * (c'^d) (mod N)
-    We know e^-1 ≡ d (mod phi(N)) => e*d ≡ 1 (mod phi(N)) => e*d = k*phi(N) + 1 for some k ∈ ℕ. Subsequently, via Euler's
+    We know e^-1 ≡ d (mod phi(N)) => e*d ≡ 1 (mod phi(N)) =>
+    e*d = k*phi(N) + 1 for some k ∈ ℕ. Subsequently, via Euler's
     Theorem or Lagrange's theorem; a^phi(N) ≡ 1 (mod N) if gcd(a, N) = 1
     c^d ≡ ((f^e)^d) * ((m'^e)^d) (mod N)
     c^d ≡ (f^k*phi(N)+1) * (m'^k*phi(N)+1) (mod N)
