@@ -5,9 +5,23 @@ Q.2 To prevent the attack, the vendor suggests altering the software: the
     idea is that no matter what error occurs, the same error code will be
     produced.  Explain whether (and why, or why not) this change alone is
     sufficient.
+
 Q.4 This attack is based on the fact that decrypting a ciphertext of the
     form c = (f^e)*c' mod N produces a plaintext of the form f*m' mod N.
     Show why this fact is true.
+
+    c = (f^e) * c' (mod N)
+    To decrypt we raise c to the power of d (the private key)...
+    c^d ≡ ((f^e) * c')^d (mod N)
+    c^d ≡ ((f^e)^d) * (c'^d) (mod N)
+    We know e^-1 ≡ d (mod phi(N)) => e*d ≡ 1 (mod phi(N)) => e*d = k*phi(N) + 1 for some k ∈ ℕ. Subsequently, via Euler's
+    Theorem or Lagrange's theorem; a^phi(N) ≡ 1 (mod N) if gcd(a, N) = 1
+    c^d ≡ ((f^e)^d) * ((m'^e)^d) (mod N)
+    c^d ≡ (f^k*phi(N)+1) * (m'^k*phi(N)+1) (mod N)
+    Via Lagrange or Euler above this yields...
+    c^d ≡ (f^1) * (m'^1) (mod N)
+    Therefore, c^d ≡ f*m' (mod N)
+
 Q.8 Imagine you are a security consultant, employed by the device vendor.
     The vendor has heard that exponent and message blinding can be used to
     prevent some side-channel attacks on RSA.  Explain whether these
