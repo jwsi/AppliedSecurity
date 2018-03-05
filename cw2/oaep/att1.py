@@ -6,17 +6,18 @@ interactions = 0
 
 # This function extracts parameters from a config file
 def getParams(file):
-    print "Attempting to parse the config file..."
+    print "Parsing the config file... " + " "*6,
     conf = open(file, "r")
     N = int(conf.readline().strip(), 16)
-    print "N (RSA Modulus): "      + str(N)
     e = int(conf.readline().strip(), 16)
-    print "e (public exponent): "  + str(e)
     l = int(conf.readline().strip(), 16)
-    print "l (octet OAEP label): " + "{0:X}".format(l)
     c = int(conf.readline().strip(), 16)
-    print "c (octet ciphertext): " + "{0:0256X}".format(c) + "\n"
     conf.close()
+    print "COMPLETE!"
+    print "N (RSA Modulus): " + " "*5 + str(N)
+    print "e (public exponent): " + " " + str(e)
+    print "l (octet OAEP label): " + "{0:X}".format(l)
+    print "c (octet ciphertext): " + "{0:0256X}".format(c) + "\n"
     return (N, e, l, c)
 
 
@@ -88,7 +89,7 @@ def step3(target, l, f2, e, c, N, B, k):
         else:
             m_max = divFloor( (i * N + B), f3 )
     print "COMPLETE! This took " + str(interactions - startInteractions) + " oracle queries.\n"
-    print "encoded plaintext (octet string): " + "{0:0256X}".format(m_max)
+    print "Encoded plaintext (octet string): " + "{0:0256X}".format(m_max)
     return m_max
 
 
@@ -133,7 +134,7 @@ def OAEPDecode(EM, L):
     if Y != "00" or lHash != lHashMK2 or len(paddedM) < 2:
         raise Exception("decryption error")
     # Return the message
-    print "COMPLETE!\n"
+    print " "*11 + "COMPLETE!\n"
     return paddedM[1]
 
 
