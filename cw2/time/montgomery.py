@@ -31,12 +31,12 @@ def montgomeryR(N):
     return R
 
 
-# This algorithm is the montgomery reduction algorithm.
+# This algorithm is the montgomery reduction algorithm. It also returns whether a reduction was required.
 def montgomeryReduction(T, N, R, Ninv):
     m = (T * (-Ninv)) % R
     t = T + m*N
-    t = (t / R) % N
-    return t
+    t = t / R
+    return (t % N, t > N)
 
 
 # Given a and b in montgomery form it will compute and store (a*b) mod N in montgomery form.
@@ -45,7 +45,7 @@ def montgomeryMultiplication(aMont, bMont, N, R, Ninv):
     return montgomeryReduction(abRR, N, R, Ninv)
 
 
-# This function stores the montgomery form of integer a. I.e. aR (mod N)
+# This function stores the montgomery form of integer a. I.e. aR (mod N).
 def montgomeryForm(a, N, R):
     res = a * R
     return res % N

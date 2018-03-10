@@ -1,4 +1,4 @@
-import sys, subprocess, math, hashlib
+import sys, subprocess, random
 from montgomery import *
 
 # Define global variable for interactions with oracle
@@ -19,46 +19,114 @@ def getParams(file):
 
 
 # This function communicates with the attack target
-def communicate(target, l, c):
+def communicate(target, c):
     global interactions
     # Send label & ciphertext to attack target.
     ctxt  = "{0:0256X}".format(c)
-    label = "{0:X}".format(l)
-    target.stdin.write(label + "\n")
     target.stdin.write(ctxt  + "\n")
     target.stdin.flush()
 
     # Receive result code from attack target.
-    result = int(target.stdout.readline().strip())
+    time = int(target.stdout.readline().strip())
+    result = int(target.stdout.readline().strip(), 16)
     interactions += 1
-    return result
+    return result, time
 
 
+def oracle1(messages, b, N, e, R, Ninv):
+    M1 = []
+    M2 = []
+    for m in messages:
+        mTemp = (m ** int(b, 2)) ** 2
+        mTempMont = montgomeryForm(mTemp, N, R)
+        mMont = montgomeryForm(m, N, R)
+        res = montgomeryMultiplication(mTempMont, mMont, N, R, Ninv)[0]
+        res = montgomeryMultiplication(res, res, N, R, Ninv)[1]
+        if res:
+            M1.append(m)
+        else:
+            M2.append(m)
+    return M1, M2
 
 
-
-# This function returns the floor of a/b
-def divFloor(a, b):
-    mod = a % b
-    multiple = a - mod
-    return multiple / b
-
-
-# This function returns the ceiling of a/b
-def divCeil(a, b):
-    mod = a % b
-    if mod == 0:
-        return a/b
-    multiple = a - mod
-    return multiple/b + 1
+def oracle2(messages, b, N, e, R, Ninv):
+    M3 = []
+    M4 = []
+    for m in messages:
+        mTemp = (m ** int(b, 2)) ** 2
+        mTempMont = montgomeryForm(mTemp, N, R)
+        res = montgomeryMultiplication(mTempMont, mTempMont, N, R, Ninv)[1]
+        if res:
+            M3.append(m)
+        else:
+            M4.append(m)
+    return M3, M4
 
 
-# This function implements XOR of hex strings and pads to fit input length
-def hexXOR(a, b):
-    a_int = int(a, 16)
-    b_int = int(b, 16)
-    pad = str(max(len(a), len(b)))
-    return ("{0:0" + pad + "X}").format(a_int ^ b_int)
+def calculateTiming(target, M1, M2, M3, M4):
+    # Perform the timing on each of the message arrays
+    F1 = []
+    F2 = []
+    F3 = []
+    F4 = []
+    for m in M1:
+        res, time = communicate(target, m)
+        F1.append(time)
+    for m in M2:
+        res, time = communicate(target, m)
+        F2.append(time)
+    for m in M3:
+        res, time = communicate(target, m)
+        F3.append(time)
+    for m in M4:
+        res, time = communicate(target, m)
+        F4.append(time)
+    return F1, F2, F3, F4
+
+
+def analyse(F1, F2, F3, F4):
+    avgF1 = sum(F1)/len(F1)
+    # print avgF1
+    avgF2 = sum(F2)/len(F2)
+    # print avgF2
+    avgF3 = sum(F3)/len(F3)
+    # print avgF3
+    avgF4 = sum(F4)/len(F4)
+    # print avgF4
+    if (avgF1 > avgF2) and (abs(avgF3 - avgF4) < 20):
+        return "1"
+    elif (avgF3 > avgF4) and (abs(avgF1 - avgF2) < 20):
+        return "0"
+    else:
+        raise Exception("Statistical analysis could not accurately predict the next key bit")
+
+
+def attack(target, N, e):
+    b = "1" # we know the initial key bit = 1
+    lenN = N.bit_length()
+    # messages = generateMessages(2000, lenN)
+    messages = [7437547582898201166504790977009610016749607629859363723369068181167009518876199364654610230480145538179909148502618573185612444121691839267565803294923702420005740938330614081786981007239523341371497003489375266303038180338735276899083164028033783243467202599597567762300353895115906651794955198976961277782, 28322960429222631649519165870154768807551969381586638880015921551868899479825915114670445913524003181840626189062434078298169148285240351148854593202066887026127177236564723164830250463764344731177585826562788177010357956222963602960797909232584786281688554448416696221018039806357035293662240436721652725740]
+    R = montgomeryR(N)
+    Ninv = modularInverse(N, R)
+    # for i in range(0, 63):
+        # Step 1: calculate M1 -> M4
+    M1, M2 = oracle1(messages, b, N, e, R, Ninv)
+    M3, M4 = oracle2(messages, b, N, e, R, Ninv)
+    # Step 2: calculate F1 -> F4 from attack target
+    # F1, F2, F3, F4 = calculateTiming(target, M1, M2, M3, M4)
+        # Step 3: predict the next key bit
+        # nextBit = analyse(F1, F2, F3, F4)
+        # b = nextBit + b
+        # print i
+    print b
+
+
+def generateMessages(amount, bitLength):
+    random.seed() # Seed internal PRNG with current time (don't really care too much about true randomness here...)
+    messages = []
+    for i in range(0, amount):
+        messages.append(random.getrandbits(bitLength))
+    return messages
 
 
 # This is the main function
@@ -68,7 +136,7 @@ def main():
     # Spin up a subprocess.
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     # Perform the attack
-
+    attack(target, N, e)
     # Retrieve the key
 
     # Print the number of oracle interactions required
