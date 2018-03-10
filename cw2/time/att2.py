@@ -1,4 +1,5 @@
 import sys, subprocess, math, hashlib
+from montgomery import *
 
 # Define global variable for interactions with oracle
 interactions = 0
