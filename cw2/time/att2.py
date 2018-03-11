@@ -33,7 +33,7 @@ def communicate(target, c):
     return result, time
 
 
-def oracle1(messages, mTemps, b, N, e, R, Ninv):
+def oracle1(messages, mTemps, N, e, R, Ninv):
     M1 = {}
     M2 = {}
     mTemps1 = {}
@@ -49,7 +49,7 @@ def oracle1(messages, mTemps, b, N, e, R, Ninv):
     return M1, M2, mTemps1
 
 
-def oracle2(messages, mTemps, b, N, e, R, Ninv):
+def oracle2(messages, mTemps, N, e, R, Ninv):
     M3 = {}
     M4 = {}
     mTemps2 = {}
@@ -70,16 +70,16 @@ def analyse(M1, M2, M3, M4):
     avgF4 = float(sum(M4.values()))/len(M4)
     diff1 = abs(avgF1 - avgF2)
     diff2 = abs(avgF3 - avgF4)
-    if (diff1 > diff2) and avgF1 > avgF2 and (abs(avgF3 - avgF4) < 50):
+    if (diff1 > diff2) and avgF1 > avgF2 and abs(avgF3 - avgF4) < 50:
         return "1"
-    elif (diff2 > diff1) and avgF3 > avgF4 and (abs(avgF1 - avgF2) < 50):
+    elif (diff2 > diff1) and avgF3 > avgF4 and abs(avgF1 - avgF2) < 50:
         return "0"
     else:
-        raise Exception("Statistical analysis cannot determine next bit. Try running again...")
+        return "warn"
 
 def correctKey(target, b, N):
-    key0 = int("".join(b) + "0", 2)
-    key1 = int("".join(b) + "1", 2)
+    key0 = int(b + "0", 2)
+    key1 = int(b + "1", 2)
     testMessage, res = groundTruth
     if pow(testMessage, key0, N) == res:
         return True, key0
@@ -88,23 +88,29 @@ def correctKey(target, b, N):
     return False, b
 
 def attack(target, N, e):
-    b = ["1"] # we know the initial key bit = 1
-    messages = generateMessages(5000, target, N)
+    b = "1" # we know the initial key bit = 1
+    messages = generateMessages(4000, target, N)
     R = montgomeryR(N)
     Ninv = modularInverse(N, R)
     mTemps = {m : montgomeryForm(m*m, N, R) for m in messages.keys()}
     correct = False
     while not correct:
         print "calculating next bit... ",
-        M1, M2, mTemps1 = oracle1(messages, mTemps, b, N, e, R, Ninv)
-        M3, M4, mTemps2 = oracle2(messages, mTemps, b, N, e, R, Ninv)
+        M1, M2, mTemps1 = oracle1(messages, mTemps, N, e, R, Ninv)
+        M3, M4, mTemps2 = oracle2(messages, mTemps, N, e, R, Ninv)
         nextBit = analyse(M1, M2, M3, M4)
         if nextBit == "1":
             mTemps = mTemps1
-            b.append(nextBit)
+            b = b + "1"
         elif nextBit == "0":
             mTemps = mTemps2
-            b.append(nextBit)
+            b = b + "0"
+        else: # Error detected restart the operation...
+            print "ERROR DETECTED! Rebuilding key..."
+            b = "1"
+            messages.update(generateMessages(500, target, N))
+            mTemps = {m: montgomeryForm( pow(pow(m, int(b, 2), N), 2, N) , N, R) for m in messages.keys()}
+            continue
         correct, key = correctKey(target, b, N)
         print "Found bit! Key so far: " + "".join(b)
         if correct:
