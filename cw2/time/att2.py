@@ -70,15 +70,12 @@ def analyse(M1, M2, M3, M4):
     avgF4 = float(sum(M4.values()))/len(M4)
     diff1 = abs(avgF1 - avgF2)
     diff2 = abs(avgF3 - avgF4)
-    if (diff1 > diff2) and avgF1 > avgF2:
+    if (diff1 > diff2) and avgF1 > avgF2 and abs(avgF3 - avgF4):
         return "1"
-    elif (diff2 > diff1) and avgF3 > avgF4:
+    elif (diff2 > diff1) and avgF3 > avgF4 and abs(avgF1 - avgF2):
         return "0"
     else:
-        print avgF1
-        print avgF2
-        print avgF3
-        print avgF4
+        print " ERROR DETECTED! ",
         return "warn"
 
 def correctKey(target, b, N):
@@ -93,7 +90,7 @@ def correctKey(target, b, N):
 
 def attack(target, N, e):
     b = ["1"] # we know the initial key bit = 1
-    messages = generateMessages(5000, target, N)
+    messages = generateMessages(4000, target, N)
     R = montgomeryR(N)
     Ninv = modularInverse(N, R)
     mTemps = {m : montgomeryForm(m*m, N, R) for m in messages.keys()}
@@ -121,9 +118,10 @@ def attack(target, N, e):
                 b = b[: -errorCounter-1]
                 b.append("1")
                 errorCounter = 1
+            messages.update(generateMessages(500, target, N))
             mTemps = {m: montgomeryForm( pow(pow(m, int("".join(b), 2), N), 2, N) , N, R) for m in messages.keys()}
         correct, key = correctKey(target, b, N)
-        print "Found bit! Key so far: " + "".join(b) + " error status: " + str(errorCounter)
+        print "Found bit! Key so far: " + "".join(b)
         if correct:
             print "FOUND KEY: " + "{0:b}".format(key)
             break
