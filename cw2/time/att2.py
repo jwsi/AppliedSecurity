@@ -106,8 +106,9 @@ def attack(target, N, e):
             mTemps = mTemps2
             b.append(nextBit)
         correct, key = correctKey(target, b, N)
-        print "key so far... " + "".join(b)
+        print "Found bit! Key so far: " + "".join(b)
         if correct:
+            print "FOUND KEY!"
             break
     print "\nKey: {0:X}".format(key)
 
