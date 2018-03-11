@@ -77,6 +77,7 @@ def analyse(M1, M2, M3, M4):
     else:
         return "warn"
 
+
 def correctKey(target, b, N):
     key0 = int(b + "0", 2)
     key1 = int(b + "1", 2)
@@ -86,6 +87,7 @@ def correctKey(target, b, N):
     elif pow(testMessage, key1, N) == res:
         return True, key1
     return False, b
+
 
 def attack(target, N, e):
     b = "1" # we know the initial key bit = 1
