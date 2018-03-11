@@ -17,7 +17,7 @@ So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
 effort : stage 1 -> [19] hours
-effort : stage 2 -> [...] hours
+effort : stage 2 -> [21] hours
 effort : stage 3 -> [...] hours
 effort : stage 4 -> [...] hours
 
@@ -52,19 +52,19 @@ outside this list can warrant an increase/decrease in marks, with examples
 including hard to quantify features such as the efficiency, robustness,
 generality, realism, or style of a solution.
 
-[?] Stage 1 : an attack based on error messages
+[X] Stage 1 : an attack based on error messages
               - correct challenge material                           ( 40%)
               - solution quality wrt. efficiency, robustness etc.    ( 30%)
               - analysis questions                                   ( 30%)
 
-              challenge material (i.e., plaintext  m^{*}) : [...]
+              challenge material (i.e., plaintext  m^{*}) : [72ACCF08DA8AB6FD918C3D61247C7EC4C150DCC0A7D8] (IN HEX)
 
-[?] Stage 2 : an attack based on execution time
+[X] Stage 2 : an attack based on execution time
               - correct challenge material                           ( 40%)
               - solution quality wrt. efficiency, robustness etc.    ( 30%)
               - analysis questions                                   ( 30%)
 
-              challenge material (i.e., exponent   d^{*}) : [...]
+              challenge material (i.e., exponent   d^{*}) : [25802675D0B01797] (IN HEX)
 
 [?] Stage 3 : an attack based on an injected fault
               - correct challenge material                           ( 40%)
