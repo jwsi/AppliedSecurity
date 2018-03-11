@@ -33,69 +33,42 @@ def communicate(target, c):
     return result, time
 
 
-def oracle1(messages, b, N, e, R, Ninv):
-    M1 = []
-    M2 = []
-    for m in messages:
-        mTemp = (m ** int(b, 2)) ** 2
-        mTempMont = montgomeryForm(mTemp, N, R)
+def oracle1(messages, mTemps1, b, N, e, R, Ninv):
+    M1 = {}
+    M2 = {}
+    for m, time in messages.iteritems():
         mMont = montgomeryForm(m, N, R)
-        res = montgomeryMultiplication(mTempMont, mMont, N, R, Ninv)[0]
-        res = montgomeryMultiplication(res, res, N, R, Ninv)[1]
-        if res:
-            M1.append(m)
+        res = montgomeryMultiplication(mTemps1[m], mMont, N, R, Ninv)[0]
+        res, reduced = montgomeryMultiplication(res, res, N, R, Ninv)
+        mTemps1[m] = res
+        if reduced:
+            M1[m] = time
         else:
-            M2.append(m)
-    return M1, M2
+            M2[m] = time
+    return M1, M2, mTemps1
 
 
-def oracle2(messages, b, N, e, R, Ninv):
-    M3 = []
-    M4 = []
-    for m in messages:
-        mTemp = (m ** int(b, 2)) ** 2
-        mTempMont = montgomeryForm(mTemp, N, R)
-        res = montgomeryMultiplication(mTempMont, mTempMont, N, R, Ninv)[1]
-        if res:
-            M3.append(m)
+def oracle2(messages, mTemps2, b, N, e, R, Ninv):
+    M3 = {}
+    M4 = {}
+    for m, time in messages.iteritems():
+        res, reduced = montgomeryMultiplication(mTemps2[m], mTemps2[m], N, R, Ninv)
+        mTemps2[m] = res
+        if reduced:
+            M3[m] = time
         else:
-            M4.append(m)
-    return M3, M4
+            M4[m] = time
+    return M3, M4, mTemps2
 
 
-def calculateTiming(target, M1, M2, M3, M4):
-    # Perform the timing on each of the message arrays
-    F1 = []
-    F2 = []
-    F3 = []
-    F4 = []
-    for m in M1:
-        res, time = communicate(target, m)
-        F1.append(time)
-    for m in M2:
-        res, time = communicate(target, m)
-        F2.append(time)
-    for m in M3:
-        res, time = communicate(target, m)
-        F3.append(time)
-    for m in M4:
-        res, time = communicate(target, m)
-        F4.append(time)
-    return F1, F2, F3, F4
-
-
-def analyse(F1, F2, F3, F4):
-    avgF1 = sum(F1)/len(F1)
-    # print avgF1
-    avgF2 = sum(F2)/len(F2)
-    # print avgF2
-    avgF3 = sum(F3)/len(F3)
-    # print avgF3
-    avgF4 = sum(F4)/len(F4)
-    # print avgF4
-    if (avgF1 > avgF2) and (abs(avgF3 - avgF4) < 20):
+def analyse(M1, M2, M3, M4):
+    avgF1 = float(sum(M1.values()))/len(M1)
+    avgF2 = float(sum(M2.values()))/len(M2)
+    avgF3 = float(sum(M3.values()))/len(M3)
+    avgF4 = float(sum(M4.values()))/len(M4)
+    if (avgF1 > avgF2) and (abs(1-(avgF3/avgF4)) < 0.05):
         return "1"
-    elif (avgF3 > avgF4) and (abs(avgF1 - avgF2) < 20):
+    elif (avgF3 > avgF4) and (abs(1-(avgF1/avgF2)) < 0.05):
         return "0"
     else:
         raise Exception("Statistical analysis could not accurately predict the next key bit")
@@ -103,29 +76,28 @@ def analyse(F1, F2, F3, F4):
 
 def attack(target, N, e):
     b = "1" # we know the initial key bit = 1
-    lenN = N.bit_length()
-    # messages = generateMessages(2000, lenN)
-    messages = [7437547582898201166504790977009610016749607629859363723369068181167009518876199364654610230480145538179909148502618573185612444121691839267565803294923702420005740938330614081786981007239523341371497003489375266303038180338735276899083164028033783243467202599597567762300353895115906651794955198976961277782, 28322960429222631649519165870154768807551969381586638880015921551868899479825915114670445913524003181840626189062434078298169148285240351148854593202066887026127177236564723164830250463764344731177585826562788177010357956222963602960797909232584786281688554448416696221018039806357035293662240436721652725740]
+    messages = generateMessages(1500, target, N)
     R = montgomeryR(N)
     Ninv = modularInverse(N, R)
-    # for i in range(0, 63):
-        # Step 1: calculate M1 -> M4
-    M1, M2 = oracle1(messages, b, N, e, R, Ninv)
-    M3, M4 = oracle2(messages, b, N, e, R, Ninv)
-    # Step 2: calculate F1 -> F4 from attack target
-    # F1, F2, F3, F4 = calculateTiming(target, M1, M2, M3, M4)
-        # Step 3: predict the next key bit
-        # nextBit = analyse(F1, F2, F3, F4)
-        # b = nextBit + b
-        # print i
-    print b
+    mTemps1 = {m : montgomeryForm(m*m, N, R) for m in messages.keys()}
+    mTemps2 = mTemps1.copy()
+    for i in range(0, 63):
+        print "calculating bit " + str(63 - i),
+        M1, M2, mTemps1 = oracle1(messages, mTemps1, b, N, e, R, Ninv)
+        M3, M4, mTemps2 = oracle2(messages, mTemps2, b, N, e, R, Ninv)
+        nextBit = analyse(M1, M2, M3, M4)
+        b = b + nextBit
+        print " key so far... " + b
+    print "{0:X}".format(int(b, 2))
 
 
-def generateMessages(amount, bitLength):
+def generateMessages(amount, target, N):
     random.seed() # Seed internal PRNG with current time (don't really care too much about true randomness here...)
-    messages = []
+    messages = {}
     for i in range(0, amount):
-        messages.append(random.getrandbits(bitLength))
+        m = random.getrandbits(N.bit_length()) % N
+        _, time = communicate(target, m)
+        messages[m] = time
     return messages
 
 
