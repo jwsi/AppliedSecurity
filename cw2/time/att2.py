@@ -108,7 +108,7 @@ def attack(target, N, e):
         correct, key = correctKey(target, b, N)
         print "Found bit! Key so far: " + "".join(b)
         if correct:
-            print "FOUND KEY!"
+            print "FOUND KEY: " + "{0:b}".format(key)
             break
     print "\nKey: {0:X}".format(key)
 
