@@ -70,12 +70,16 @@ def analyse(M1, M2, M3, M4):
     avgF4 = float(sum(M4.values()))/len(M4)
     diff1 = abs(avgF1 - avgF2)
     diff2 = abs(avgF3 - avgF4)
-    if (diff1 > diff2) and avgF1 > avgF2 and (abs(avgF3 - avgF4) < 50):
+    if (diff1 > diff2) and avgF1 > avgF2:
         return "1"
-    elif (diff2 > diff1) and avgF3 > avgF4 and (abs(avgF1 - avgF2) < 50):
+    elif (diff2 > diff1) and avgF3 > avgF4:
         return "0"
     else:
-        raise Exception("Statistical analysis cannot determine next bit. Try running again...")
+        print avgF1
+        print avgF2
+        print avgF3
+        print avgF4
+        return "warn"
 
 def correctKey(target, b, N):
     key0 = int("".join(b) + "0", 2)
@@ -94,6 +98,7 @@ def attack(target, N, e):
     Ninv = modularInverse(N, R)
     mTemps = {m : montgomeryForm(m*m, N, R) for m in messages.keys()}
     correct = False
+    errorCounter = 0
     while not correct:
         print "calculating next bit... ",
         M1, M2, mTemps1 = oracle1(messages, mTemps, b, N, e, R, Ninv)
@@ -102,11 +107,23 @@ def attack(target, N, e):
         if nextBit == "1":
             mTemps = mTemps1
             b.append(nextBit)
+            errorCounter = 0
         elif nextBit == "0":
             mTemps = mTemps2
             b.append(nextBit)
+            errorCounter = 0
+        else: # Error detected...
+            if b[-errorCounter-1] == "1":
+                b = b[: -errorCounter-1]
+                b.append("0")
+                errorCounter = 1
+            else:
+                b = b[: -errorCounter-1]
+                b.append("1")
+                errorCounter = 1
+            mTemps = {m: montgomeryForm( pow(pow(m, int("".join(b), 2), N), 2, N) , N, R) for m in messages.keys()}
         correct, key = correctKey(target, b, N)
-        print "Found bit! Key so far: " + "".join(b)
+        print "Found bit! Key so far: " + "".join(b) + " error status: " + str(errorCounter)
         if correct:
             print "FOUND KEY: " + "{0:b}".format(key)
             break
