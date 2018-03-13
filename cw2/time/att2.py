@@ -12,7 +12,7 @@ def getParams(file):
     N = int(conf.readline().strip(), 16)
     e = int(conf.readline().strip(), 16)
     conf.close()
-    print "COMPLETE!"
+    print " COMPLETE!"
     print "N (RSA Modulus): " + " "*5 + str(N)
     print "e (public exponent): " + " " + str(e) + "\n"
     return (N, e)
