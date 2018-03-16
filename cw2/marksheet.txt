@@ -16,7 +16,7 @@
 So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
-effort : stage 1 -> [19] hours
+effort : stage 1 -> [22] hours
 effort : stage 2 -> [25] hours
 effort : stage 3 -> [...] hours
 effort : stage 4 -> [...] hours
@@ -107,11 +107,13 @@ source code) should go here:
         to implement the entire attack in Python Integer/Long types. If I had
         used math.ceil and math.floor from the Python math library I would have
         had to work in floats or the multi precision Decimal type. This would
-        have likely resulted in issues with the large numbers that I was dealing
-        with as a float type wouldn't have been able to hold numbers of these
-        sizes. Thus, casting to a multi precision Decimal wouldn't have helped
-        as some data would have been lost due to the limited size of floats which
-        is the type returned by math.floor and math.ceil.
+        have likely resulted in issues with the large numbers that I was
+        dealing with as a float type wouldn't have been able to hold numbers of
+        these sizes. Thus, casting to a multi precision Decimal wouldn't have
+        helped as some data would have been lost due to the limited size of
+        floats which is the type returned by math.floor and math.ceil.
+        As a footnote the RSA-OAEP decoding function and the MGF1 algorithm
+        were implemented by using the RFC documents cited above.
     stage2:
         To improve the efficiency of this attack, the oracle is first queried
         at the beginning. 4000 messages and their associated timing data are
