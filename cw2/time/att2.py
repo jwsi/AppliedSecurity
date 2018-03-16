@@ -149,7 +149,7 @@ def main():
     # Parse the config file.
     (N, e) = getParams(sys.argv[2])
     # Spin up a subprocess.
-    target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    target = subprocess.Popen(args=sys.argv[1], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     # Perform the attack
     attack(target, N, e)
     # Print the number of oracle interactions required

@@ -166,7 +166,7 @@ def main():
     k = int(math.ceil(math.log(N, 256)))
     B = pow(2, (8 * (k - 1)))
     # Spin up a subprocess.
-    target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    target = subprocess.Popen(args=sys.argv[1], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     # Perform the attack
     f1 = step1(target, e, c, l, N)
     f2 = step2(target, l, f1, e, c, N, B)
