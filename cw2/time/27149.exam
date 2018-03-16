@@ -7,32 +7,32 @@ Q.1 The vendor of the attack target is concerned that news of this attack
     the goal to mitigate against this attack would be to make the algorithm
     constant time. That is, from an adversaries perspective this would be
     seen as a decryption process that takes the same amount of clock-cycles
-    irrespective of whether a reduction is needed at the montgomery phase.
+    irrespective of whether a reduction is needed at the Montgomery phase.
     There are two main options; software or hardware.
     Software:
-        1] One could make the montgomery reduction function take a fixed amount
+        1] One could make the Montgomery reduction function take a fixed amount
         of time. I.e. regardless of whether a further reduction is required
         at the end, the time taken to complete the function is always fixed
         (in the case that the result is > N, result - N is needed). This
         could be achieved by adding a fixed delay if a reduction is not
-        required, or even performing a further subtraction on some other useless
-        value just to make the algorithm behave in a constant time regardless
-        of input parameters.
-        2] Exponentiation blinding. This attack relies on many interactions with
-        the oracle under the assumption that the oracle is operating using a fixed
-        decryption key. Exponentiation blinding uses a modified decryption key each
-        time called d' = d + k*phi(N) st. k ∈ ℕ. Even though this key is congruent
-        to d modulo N. It will make the process of key retrieval very hard in a
-        differential timing attack such as this one. This is because the decryption
-        key is random each time and so the key recovery is no longer based on a
-        singular fixed key. This attack effectively places stricter limits on an
-        adversary.
+        required, or even performing a further subtraction on some other
+        useless value just to make the algorithm behave in a constant time
+        regardless of input parameters.
+        2] Exponentiation blinding. This attack relies on many interactions
+        with the oracle under the assumption that the oracle is operating using
+        a fixed decryption key. Exponentiation blinding uses a modified
+        decryption key each time called d' = d + k*phi(N) st. k ∈ ℕ. Even
+        though this key is congruent to d modulo N. It will make the process of
+        key retrieval very hard in a differential timing attack such as this
+        one. This is because the decryption key is random each time and so the
+        key recovery is no longer based on a singular fixed key. This attack
+        effectively places stricter limits on an adversary.
     Hardware:
         1] If a circuit exists that can perform a modulo operation in constant
         time then this could be used in the last step. I.e. when fed a result
         that is larger or smaller than N, the circuit would be able to compute
         result % N in constant time. If a circuit like this was utilised in
-        the montgomery reduction, then there would be no need for any software
+        the Montgomery reduction, then there would be no need for any software
         checking. This may not be the fastest solution, but it does guarantee
         security against a timing attack.
     Overall, I would recommend either of the software solutions above. The
@@ -56,10 +56,11 @@ Q.2 The vendor of the attack target is concerned that a similar attack may
     in decryption when multiplied with c2. Now, because there is exponentiation
     in this stage it means that the attack can work in exactly the same way to
     find x. By this, it is possible to simulate the exponentiation via
-    montgomery for each randomly generated ciphertexts before feeding to the
+    Montgomery for each randomly generated ciphertext before feeding to the
     oracle. Then associated timing data can be gathered for each of these
     ciphertexts by performing interactions with the oracle. Then the attack
     can be applied in much the same way to perform a key recovery.
+
 
 Q.4 Numerous factors might produce noise within measurements of execution
     time: based on the given attack target and context, outline at least
@@ -73,13 +74,14 @@ Q.4 Numerous factors might produce noise within measurements of execution
     timeStart, timeEnd and timeDiff which are the start time of the program
     read from the system clock, the time at the end of execution read from
     the system clock and the difference between the two in clock cycles
-    stored as an integer. If the OS kernel were to context
-    switch the decryption process would pause and execution would change to some other program. When the
-    kernel eventually switches back to the decryption process, the end clock
-    value read from the system clock would have included the time taken for the
-    context switch. Thus the total execution time then becomes the total time
-    for decryption + the context switch and execution of another program. This
-    would produce noise in the timing data returned by the oracle.
+    stored as an integer. If the OS kernel were to context switch, the
+    decryption process would pause and execution would change to some other
+    program. When the kernel eventually switches back to the decryption
+    process, the end clock value read from the system clock would have included
+    the time taken for the context switch. Thus the total execution time then
+    becomes the total time for decryption + the context switch and execution of
+    another program. This would produce noise in the timing data returned by
+    the oracle.
     2] System calls + page faults:
     This is very similar to context switching, in fact if either a system
     call or page fault occurs, a context switch happens and the kernel takes
@@ -89,11 +91,13 @@ Q.4 Numerous factors might produce noise within measurements of execution
     due to the way time is likely measured (see factor 1]) this will be
     added to the total execution time for the decryption process.
     3] Choice of ciphertexts:
-    In certain scenarios the choice of ciphertexts may produce noisy results. For example, my in my attack each ciphertext
-    is generated randomly. This means that there is a chance that only a very small amount of these will result
-    in a further reduction at the end of the montgomery reduction algorithm or vice versa. If this is the case and if these
-    small sample sizes are subject to noise then the overall sample set may be noisy and produce unexpected results.
-
+    In certain scenarios the choice of ciphertexts may produce noisy results.
+    For example, in my attack each ciphertext is generated randomly. This means
+    that there is a chance that only a very small amount of these will result
+    in a further reduction at the end of the Montgomery reduction algorithm or
+    vice versa. If this is the case and if these small sample sizes are subject
+    to noise then the overall sample set may be noisy and produce unexpected
+    results.
 
 
 Q.7 Imagine the attack target vendor asks you to update the implementation
@@ -102,22 +106,28 @@ Q.7 Imagine the attack target vendor asks you to update the implementation
     your choice in terms of latency, memory footprint, and (side-channel)
     security.
 
-    Windowed exponentiation (variant of 2^k ary method)
-    This algorithm is an efficient variant of the 2^k ary method.
-    The algorithm takes a dynamic programming approach by storing a list
-    of precomputed values and effectively trades memory space for speed.
-    This can be considered an advantage as in most implementations one is
-    far more concerned about speed limitations than memory. The memory footprint of this algorithm would largely
-    reside around the size of the precomputed list which has 2^(window_size-1) elements, all of which
-    are large multi-precision integer types in the case of RSA. Furthermore,
-    this algorithm can be adapted fairly easily to use montgomery integers.
-    This means it can be paired with efficient montgomery functions to perform
-    fast multiplication modulo a number.
-    A disadvantage with this algorithm is that if an adversary were to observe
-    the patterns of squaring and multiplications, it could be possible that they
-    obtain some or all bits of the exponent. This is clearly a problem with RSA
-    or any public key cryptosystem as no matter if a technique such as exponent
-    blinding is additionally used, the underlying exponent is still congruent
-    to some valid encryption/decyrption key modulo the public key. In the case of decryption this
-    clearly needs to be kept secret! So in terms of side-channel security, this algorithm doesn't aim to mitigate
-    against attacks of this nature which is a clear disadvantage.
+    Windowed exponentiation (efficient variant of 2^k ary method).
+    The algorithm takes a dynamic programming approach by storing a list of
+    precomputed values and effectively trades memory space for speed. This can
+    be considered an advantage as in most implementations one is far more
+    concerned about speed limitations than memory. The memory footprint of this
+    algorithm would largely reside around the size of the precomputed list
+    which has 2^(window_size-1) elements, all of which are large
+    multi-precision integer types in the case of RSA. Furthermore, this
+    algorithm can be adapted fairly easily to use Montgomery integers. This
+    means it can be paired with efficient Montgomery functions to perform fast
+    multiplication modulo a specified number. A disadvantage with this
+    algorithm is that if an adversary were to observe the patterns of running
+    multiple Montgomery multiplications for exponentiation, it could be
+    possible that they obtain some or all bits of the exponent. This is clearly
+    a problem with RSA or any public key cryptosystem as no matter if a
+    technique such as exponent blinding is additionally used, the underlying
+    exponent is still congruent to some valid encryption/decryption key modulo
+    the public key. In the case of decryption this clearly needs to be kept
+    secret! So in terms of side-channel security, this algorithm doesn't aim to
+    mitigate against attacks of this nature which is a clear disadvantage,
+    hence why the Montgomery ladder technique is more widely adopted.
+    As a footnote, the algorithm may potentially be made more secure by
+    choosing a random window size each time it is used. By adopting this
+    strategy it places stricter limits on the adversary as the window size
+    greatly alters the computation process.
