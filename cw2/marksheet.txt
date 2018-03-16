@@ -17,7 +17,7 @@ So that we can calibrate and improve the assignment in the future, give us
 a rough idea how long (in hours) you spent on it *in total*:
 
 effort : stage 1 -> [19] hours
-effort : stage 2 -> [21] hours
+effort : stage 2 -> [25] hours
 effort : stage 3 -> [...] hours
 effort : stage 4 -> [...] hours
 
@@ -39,6 +39,9 @@ and what isn't:
             https://tools.ietf.org/html/rfc3447#section-7.1.1
         MGF1 Algorithm:
             https://tools.ietf.org/html/rfc2437#section-10.2.1
+    stage2:
+        RSA Timing Attack:
+            http://citeseerx.ist.psu.edu/viewdoc/download;jsessionid=76B2CB4D4E65E99EE6E7CF46B65000A8?doi=10.1.1.12.3070&rep=rep1&type=pdf
 ]
 
 -------------------------------------------------------------------------------
@@ -91,6 +94,39 @@ Any other documentation, notes or comments that you think are important or
 might be easy to overlook (e.g., a subtle issue or technique in associated
 source code) should go here:
 
-[...]
+[
+    stage1:
+        This attack directly follows Manger's paper on a CCA attack for
+        RSA-OAEP. For my particular oracle, the hex XOR function had to
+        be engineered slightly more carefully such that the output is padded
+        to the length of the biggest input parameter, otherwise when passing
+        the resulting output to a hex decoder it would error due to an odd
+        length string.
+        In addition to the above, I made the decision to implement my own
+        floored and ceiling division functions. By doing this it allowed me
+        to implement the entire attack in Python Integer/Long types. If I had
+        used math.ceil and math.floor from the Python math library I would have
+        had to work in floats or the multi precision Decimal type. This would
+        have likely resulted in issues with the large numbers that I was dealing
+        with as a float type wouldn't have been able to hold numbers of these
+        sizes. Thus, casting to a multi precision Decimal wouldn't have helped
+        as some data would have been lost due to the limited size of floats which
+        is the type returned by math.floor and math.ceil.
+    stage2:
+        To improve the efficiency of this attack, the oracle is first queried
+        at the beginning. 4000 messages and their associated timing data are
+        gathered to form the base sample.
+        The timing data is then compared and sorted into groups (see paper
+        referenced above...) and bit predictions of the key is made by
+        analysing these groups. If a decision cannot be made, then a restart
+        is triggered and 1000 more samples are added to the message set. If
+        the sample set reaches 10000 messages, a hard reset is triggered whereby
+        the entire message space is eradicated. Subsequently a new initial
+        message space is grafted and the process restarts again. By taking this
+        approach it ensures that if large amounts of noise have entered the
+        sample, it has the chance to restart completely which is often more
+        efficient than adding more and more good samples to an already large
+        abnormal set.
+]
 
 -------------------------------------------------------------------------------

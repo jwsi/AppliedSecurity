@@ -2,6 +2,76 @@ Q.1 Consider the parameters N = 3551, e = 5, d = 1373, and c = 888, all
     represented in decimal.  Use them to explain, in your own words, the
     principle of this attack (e.g., how and why it works).
 
+    Denote B as: B = 2^8(k-1) where k is the size of the RSA modulus N in
+    bytes. k = ceil(log_256(N)) = 2. Therefore B = 2^8 = 256.
+    B can intuitively make sense, we know any valid message must start with
+    00 in HEX. This 00 corresponds to 1 byte less of information than N.
+    Therefore, the maximum size of a message must be no greater than B (the
+    size of N in bits - 256).
+    If an oracle reveals this boundary in the form of an error message during
+    decryption this gives an adversary the ability to manipulate ciphertexts
+    to work out a lower and upper boundary to which decryption succeeds and
+    then fails.
+
+    STEP 1:
+        This step finds the first cutoff point for f*m (mod N) to be greater
+        than B. As ((f^e) * c)^d ≡ f*m (mod N)
+        f1 is the first power of two such that (f1^5) * 888 sent to the oracle
+        returns >=B during the decryption phase.
+        (2^5 * 888)^1373 (mod 3551) ≡ 246
+        (4^5 * 888)^1373 (mod 3551) ≡ 492
+        We want f1^e * c ∈ [B, 2B] equivalently, f1 * m ∈ [B, 2B]
+        Therefore, f1 = 4
+        consequently => (f1/2) * m ∈ [B/2, B]
+
+    STEP 2:
+        We use the result from step 1 here.
+        Start with a multiple f2 such that f2 · m is just less than n + B for
+        the maximum possible m. Keep increasing this multiple until the oracle returns
+        “< B”. For each multiple f2 the possible values of f2 · m span a single boundary
+        point at n.
+        Start at f2 = floor((N+B)/B) * f1/2 = 28 and send to the oracle
+        (28^5 * 888)^1373 (mod 3551) = 3444
+        f2 = 28 + 2 = 30
+        (30^5 * 888)^1373 (mod 3551) = 139
+        We see that this has wrapped around.
+        Therefore f2 = 30
+        From this we can conclude f2 * m ∈ [N, N+B]
+
+    STEP 3:
+        m_min = ceil(N/f2) = 119
+        m_max = floor((N+B)/f2) = 126
+        Furthermore, f2 * (m_max - m_min) ≈ B
+        check... 29 * (126-119) = 210 ≈ B
+
+        f_tmp = floor((2*B)/(m_max-m_min)) = 73
+        i = floor((f_tmp * m_min)/N) = 2
+        f3 = ceil((i*N)/m_min) = 60
+        Try f3 with the oracle...
+        (f3^e * c)^d ≡ (60^5 * 888)^1373 ≡ 278 (mod 3551)
+        This is greater than B....
+        m_min = ceil((i*N+B)/f3) = 123
+
+        f_tmp = floor((2*B)/(m_max-m_min)) = 170
+        i = floor((f_tmp * m_min)/N) = 5
+        f3 = ceil((i*N)/m_min) = 145
+        Try f3 with the oracle...
+        (f3^e * c)^d ≡ (145^5 * 888)^1373 ≡ 80 (mod 3551)
+        This is less than B....
+        m_max = floor((i*N+B)/f3) = 124
+
+        f_tmp = floor((2*B)/(m_max-m_min)) = 512
+        i = floor((f_tmp * m_min)/N) = 17
+        f3 = ceil((i*N)/m_min) = 491
+        Try f3 with the oracle...
+        (f3^e * c)^d ≡ (491^5 * 888)^1373 ≡ 26 (mod 3551)
+        This is less than B....
+        m_max = floor((i*N+B)/f3) = 123
+
+        Now m_min = m_max therefore, the decrypted message must be 123.
+        Verification: 888^1373 mod 3551 = 123
+
+
 Q.2 To prevent the attack, the vendor suggests altering the software: the
     idea is that no matter what error occurs, the same error code will be
     produced.  Explain whether (and why, or why not) this change alone is
@@ -16,6 +86,7 @@ Q.2 To prevent the attack, the vendor suggests altering the software: the
     ciphertext relative to B would be shared. So in short, masking all the
     error codes to be the same (i.e. Decryption Error) would mitigate against
     this attack.
+
 
 Q.4 This attack is based on the fact that decrypting a ciphertext of the
     form c = (f^e)*c' mod N produces a plaintext of the form f*m' mod N.
@@ -34,7 +105,19 @@ Q.4 This attack is based on the fact that decrypting a ciphertext of the
     c^d ≡ (f^1) * (m'^1) (mod N)
     Therefore, c^d ≡ f*m' (mod N)
 
+
 Q.8 Imagine you are a security consultant, employed by the device vendor.
     The vendor has heard that exponent and message blinding can be used to
     prevent some side-channel attacks on RSA.  Explain whether these
     techniques would prevent this attack, and why.
+
+    These techniques would not prevent this attack. They are designed to mitigate
+    a completely different side channel attack. In this case the oracle is directly
+    giving you information based on the decryption process so no matter if you use
+    exponent or message blinding internally; it will still give you this information!
+    To sum up, these kind of countermeasures are designed to change the decryption process
+    and thus prevent adversaries from gaining information via timing, power or similar attacks.
+    However, as the oracle reports on the finished decryption process and errors at this stage,
+    it makes no difference having these countermeasures in place for this attack.
+    Subsequently, these countermeasures will not help here, but may be useful for other
+    situations.
