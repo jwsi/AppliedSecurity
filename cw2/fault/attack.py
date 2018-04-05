@@ -4,6 +4,7 @@ from sbox import s, sInv
 
 # Define global variable for interactions with oracle
 interactions = 0
+multiplyTable = []
 
 
 # This function communicates with the attack target
@@ -35,8 +36,18 @@ def generateMessages(amount):
     return messages
 
 
+# This function creates a lookup table for multiplication in the Galois Field of 2^8.
+def createMultiplyTable():
+    global multiplyTable
+    for i in range(256):
+        subTable = []
+        for j in range(256):
+            subTable.append(_gf28Multiply(i, j))
+        multiplyTable.append(subTable)
+
+
 # Modified peasants algorithm to perform multiplication in GF8 under the Rijndael irreducible polynomial.
-def gf8Multiply(a, b):
+def _gf28Multiply(a, b):
     # Setup initial values + ensure 8 bit max
     p = 0
     a = a & 255
@@ -56,6 +67,7 @@ def gf8Multiply(a, b):
             a = a ^ 0x1b
     return p
 
+
 # This is the main function
 def main():
     # Spin up a subprocess.
@@ -63,8 +75,8 @@ def main():
     # Perform the attack
 
     # Print the key
-    p = gf8Multiply(0x53, 0xCA)
-    print ("p is: " + str(p))
+    createMultiplyTable()
+    print multiplyTable
     # Print the number of oracle interactions required
     print "Total oracle interactions: " + str(interactions)
 
