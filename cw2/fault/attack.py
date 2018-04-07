@@ -1,6 +1,6 @@
 import sys, subprocess, random
 from fault import Fault
-from sbox import s, sInv
+from matrices import s, sInv, rcon
 
 # Define global variable for interactions with oracle
 interactions = 0
@@ -83,19 +83,19 @@ def _gf28Multiply(a, b):
 # From the paper this calculates the possible set of delta 1 values (Section 3.1)
 def findDelta1Keys(x, xF):
     for k1 in range(256):
-        line1 = sInv[ getBlock(x, 1) ^ k1 ] ^ sInv[ getBlock(xF, 1) ^ k1 ]
+        line1 = sInv[getBlock(x, 1) ^ k1] ^ sInv[getBlock(xF, 1) ^ k1]
         delta1 = multiplyTable[line1][141] # 2^-1 = 141 in Rijndael GF2^8 field
 
         for k14 in range(256):
-            line2 = sInv[ getBlock(x, 14) ^ k14 ] ^ sInv[ getBlock(xF, 14) ^ k14 ]
+            line2 = sInv[getBlock(x, 14) ^ k14] ^ sInv[getBlock(xF, 14) ^ k14]
             if line2 == delta1:
 
                 for k11 in range(256):
-                    line3 = sInv[ getBlock(x, 11) ^ k11 ] ^ sInv[ getBlock(xF, 11) ^ k11 ]
+                    line3 = sInv[getBlock(x, 11) ^ k11] ^ sInv[getBlock(xF, 11) ^ k11]
                     if line3 == delta1:
 
                         for k8 in range(256):
-                            line4 = sInv[ getBlock(x, 8) ^ k8 ] ^ sInv[ getBlock(xF, 8) ^ k8 ]
+                            line4 = sInv[getBlock(x, 8) ^ k8] ^ sInv[getBlock(xF, 8) ^ k8]
                             if multiplyTable[line4][246] == delta1: # 3^-1 = 246 in Rijndael GF2^8 field
                                 # Add this combination to the key store
                                 addKey(1, k1)
@@ -106,19 +106,19 @@ def findDelta1Keys(x, xF):
 # From the paper this calculates the possible set of delta 2 values (Section 3.1)
 def findDelta2Keys(x, xF):
     for k5 in range(256):
-        line1 = sInv[ getBlock(x, 5) ^ k5 ] ^ sInv[ getBlock(xF, 5) ^ k5 ]
+        line1 = sInv[getBlock(x, 5) ^ k5] ^ sInv[getBlock(xF, 5) ^ k5]
         delta2 = multiplyTable[line1][246] # 3^-1 = 246 in Rijndael GF2^8 field
 
         for k2 in range(256):
-            line2 = sInv[ getBlock(x, 2) ^ k2 ] ^ sInv[ getBlock(xF, 2) ^ k2 ]
+            line2 = sInv[getBlock(x, 2) ^ k2] ^ sInv[getBlock(xF, 2) ^ k2]
             if multiplyTable[line2][141] == delta2: # 2^-1 = 141 in Rijndael GF2^8 field
 
                 for k15 in range(256):
-                    line3 = sInv[ getBlock(x, 15) ^ k15 ] ^ sInv[ getBlock(xF, 15) ^ k15 ]
+                    line3 = sInv[getBlock(x, 15) ^ k15] ^ sInv[getBlock(xF, 15) ^ k15]
                     if line3 == delta2:
 
                         for k12 in range(256):
-                            line4 = sInv[ getBlock(x, 12) ^ k12 ] ^ sInv[ getBlock(xF, 12) ^ k12 ]
+                            line4 = sInv[getBlock(x, 12) ^ k12] ^ sInv[getBlock(xF, 12) ^ k12]
                             if line4 == delta2:
                                 # Add this combination to the key store
                                 addKey(5, k5)
@@ -129,18 +129,18 @@ def findDelta2Keys(x, xF):
 # From the paper this calculates the possible set of delta 3 values (Section 3.1)
 def findDelta3Keys(x, xF):
     for k9 in range(256):
-        delta3 = sInv[ getBlock(x, 9) ^ k9 ] ^ sInv[ getBlock(xF, 9) ^ k9 ]
+        delta3 = sInv[getBlock(x, 9) ^ k9] ^ sInv[getBlock(xF, 9) ^ k9]
 
         for k6 in range(256):
-            line2 = sInv[ getBlock(x, 6) ^ k6 ] ^ sInv[ getBlock(xF, 6) ^ k6 ]
+            line2 = sInv[getBlock(x, 6) ^ k6] ^ sInv[getBlock(xF, 6) ^ k6]
             if multiplyTable[line2][246] == delta3: # 3^-1 = 246 in Rijndael GF2^8 field
 
                 for k3 in range(256):
-                    line3 = sInv[ getBlock(x, 3) ^ k3 ] ^ sInv[ getBlock(xF, 3) ^ k3 ]
+                    line3 = sInv[getBlock(x, 3) ^ k3] ^ sInv[getBlock(xF, 3) ^ k3]
                     if multiplyTable[line3][141] == delta3: # 2^-1 = 141 in Rijndael GF2^8 field
 
                         for k16 in range(256):
-                            line4 = sInv[ getBlock(x, 16) ^ k16 ] ^ sInv[ getBlock(xF, 16) ^ k16 ]
+                            line4 = sInv[getBlock(x, 16) ^ k16] ^ sInv[getBlock(xF, 16) ^ k16]
                             if line4 == delta3:
                                 # Add this combination to the key store
                                 addKey(9, k9)
@@ -151,18 +151,18 @@ def findDelta3Keys(x, xF):
 # From the paper this calculates the possible set of delta 4 values (Section 3.1)
 def findDelta4Keys(x, xF):
     for k13 in range(256):
-        delta4 = sInv[ getBlock(x, 13) ^ k13 ] ^ sInv[ getBlock(xF, 13) ^ k13 ]
+        delta4 = sInv[getBlock(x, 13) ^ k13] ^ sInv[getBlock(xF, 13) ^ k13]
 
         for k10 in range(256):
-            line2 = sInv[ getBlock(x, 10) ^ k10 ] ^ sInv[ getBlock(xF, 10) ^ k10 ]
+            line2 = sInv[getBlock(x, 10) ^ k10] ^ sInv[getBlock(xF, 10) ^ k10]
             if line2 == delta4:
 
                 for k7 in range(256):
-                    line3 = sInv[ getBlock(x, 7) ^ k7 ] ^ sInv[ getBlock(xF, 7) ^ k7 ]
+                    line3 = sInv[getBlock(x, 7) ^ k7] ^ sInv[getBlock(xF, 7) ^ k7]
                     if multiplyTable[line3][246] == delta4: # 3^-1 = 246 in Rijndael GF2^8 field
 
                         for k4 in range(256):
-                            line4 = sInv[ getBlock(x, 4) ^ k4 ] ^ sInv[ getBlock(xF, 4) ^ k4 ]
+                            line4 = sInv[getBlock(x, 4) ^ k4] ^ sInv[getBlock(xF, 4) ^ k4]
                             if multiplyTable[line4][141] == delta4: # 2^-1 = 141 in Rijndael GF2^8 field
                                 # Add this combination to the key store
                                 addKey(13, k13)
@@ -170,8 +170,34 @@ def findDelta4Keys(x, xF):
                                 addKey(7, k7)
                                 addKey(4, k4)
 
+# From the paper this refines the keyset using the equations in Section 3.3
+def fEquation1(x, xF, k):
+    f2 = sInv[ multiplyTable[14][ sInv[ x[0]   ^ k[0]  ] ^ (k[0] ^ s[ k[13] ^ k[9]  ] ^ rcon[10]) ]
+             ^ multiplyTable[11][ sInv[ x[13]  ^ k[13] ] ^ (k[1] ^ s[ k[14] ^ k[10] ])            ]
+             ^ multiplyTable[13][ sInv[ x[10]  ^ k[10] ] ^ (k[2] ^ s[ k[15] ^ k[11] ])            ]
+             ^ multiplyTable[ 9][ sInv[ x[7]   ^ k[7]  ] ^ (k[3] ^ s[ k[12] ^ k[8]  ])            ] ]\
+       ^ sInv[ multiplyTable[14][ sInv[ xF[0]  ^ k[0]  ] ^ (k[0] ^ s[ k[13] ^ k[9]  ] ^ rcon[10]) ]
+             ^ multiplyTable[11][ sInv[ xF[13] ^ k[13] ] ^ (k[1] ^ s[ k[14] ^ k[10] ])            ]
+             ^ multiplyTable[13][ sInv[ xF[10] ^ k[10] ] ^ (k[2] ^ s[ k[15] ^ k[11] ])            ]
+             ^ multiplyTable[ 9][ sInv[ xF[7]  ^ k[7]  ] ^ (k[3] ^ s[ k[12] ^ k[8]  ])            ] ]
 
-# This is the main function
+    return multiplyTable[f2][141] # 2^-1 = 141 in Rijndael GF2^8 field
+
+# From the paper this refines the keyset using the equations in Section 3.3
+def fEquation2(x, xF, k):
+    f = sInv[ multiplyTable[ 9][ sInv[ x[12]  ^ k[12] ] ^ (k[12]  ^ k[8]) ]
+            ^ multiplyTable[14][ sInv[ x[9]   ^ k[9]  ] ^ (k[9]  ^ k[13]) ]
+            ^ multiplyTable[11][ sInv[ x[6]   ^ k[6]  ] ^ (k[14] ^ k[10]) ]
+            ^ multiplyTable[13][ sInv[ x[3]   ^ k[3]  ] ^ (k[15] ^ k[11]) ] ]\
+      ^ sInv[ multiplyTable[ 9][ sInv[ xF[12] ^ k[12] ] ^ (k[12] ^ k[8])  ]
+            ^ multiplyTable[14][ sInv[ xF[9]  ^ k[9]  ] ^ (k[9]  ^ k[13]) ]
+            ^ multiplyTable[11][ sInv[ xF[6]  ^ k[6]  ] ^ (k[14] ^ k[10]) ]
+            ^ multiplyTable[13][ sInv[ xF[3]  ^ k[3]  ] ^ (k[15] ^ k[11]) ] ]
+
+    return f
+
+
+
 def main():
     # Spin up a subprocess.
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
