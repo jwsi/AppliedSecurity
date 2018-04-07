@@ -140,7 +140,7 @@ def findDelta3Keys(x, xF):
                     if multiplyTable[line3][141] == delta3: # 2^-1 = 141 in Rijndael GF2^8 field
 
                         for k16 in range(256):
-                            line4 = sInv[ getBlock(x, 16) ^ k16 ] ^ sInv[ getBlock(xF, 12) ^ k16 ]
+                            line4 = sInv[ getBlock(x, 16) ^ k16 ] ^ sInv[ getBlock(xF, 16) ^ k16 ]
                             if line4 == delta3:
                                 # Add this combination to the key store
                                 addKey(9, k9)
@@ -185,12 +185,16 @@ def main():
     findDelta4Keys(ctxt, ctxtFaulty)
     print keys
 
-
-
     # Print the key
     # Print the number of oracle interactions required
     print "Total oracle interactions: " + str(interactions)
 
+# Useful for verifying the delta 1 stage for a fixed ciphertext...
+# def getComparitors(keys):
+#     candidates = []
+#     for i in range(len(keys[3])):
+#         candidates.append([keys[3][i], keys[6][i], keys[9][i], keys[12][i]])
+#     return candidates
 
 if (__name__ == "__main__"):
     main()
