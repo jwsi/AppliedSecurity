@@ -1,9 +1,10 @@
 import sys, subprocess, random, copy, time
 from matrices import s, sInv, rcon
 from fault import Fault
+from Crypto.Cipher import AES
 
 # Define global variable for interactions with oracle
-sampleSize = 10
+sampleSize = 4
 interactions = 0
 multiplyTable = []
 keys = [[] for i in range(16)]  # Initialise the key list to fit 16*8bit key bytes
@@ -29,6 +30,18 @@ def communicate(target, message, fault):
     ctxt = int(target.stdout.readline().strip(), 16)
     interactions += 1
     return ctxt
+
+
+def generateCiphertexts(target):
+    messages = generateMessages(sampleSize)
+    ctxtBlockPairs = []
+    fault = Fault(8, "SubBytes", "before", 0, 0)
+    for m in messages:
+        ctxt       = communicate(target, m, None)
+        ctxtFaulty = communicate(target, m, fault)
+        x, xF = blockify(ctxt, ctxtFaulty)
+        ctxtBlockPairs.append([x, xF])
+    return ctxtBlockPairs
 
 
 def generateMessages(amount):
@@ -239,18 +252,14 @@ def _getBlock(ctxt, number):
 
 
 # This step executes section 3.1 of the attack in full
-def step1(target, messages):
-    keys = [[] for i in range(16)]
+def step1(ctxtBlockPairs):
+    keys = [[] for _ in range(16)]
     ALL_k_0_7_10_13 = []
     ALL_k_1_4_11_14 = []
     ALL_k_2_5_8_15  = []
     ALL_k_3_6_9_12  = []
-    fault = Fault(8, "SubBytes", "before", 0, 0)
     firstTime = True
-    for m in messages:
-        ctxt       = communicate(target, m, None)
-        ctxtFaulty = communicate(target, m, fault)
-        x, xF = blockify(ctxt, ctxtFaulty)
+    for (x, xF) in ctxtBlockPairs:
         k_0_7_10_13 = findDelta1Keys(x, xF)
         k_1_4_11_14 = findDelta2Keys(x, xF)
         k_2_5_8_15  = findDelta3Keys(x, xF)
@@ -262,12 +271,6 @@ def step1(target, messages):
         ALL_k_3_6_9_12  = intersect(k_3_6_9_12,  ALL_k_3_6_9_12,  firstTime)
         firstTime = False
 
-    print ALL_k_0_7_10_13
-    print ALL_k_1_4_11_14
-    print ALL_k_2_5_8_15
-    print ALL_k_3_6_9_12
-    listLen = len(ALL_k_0_7_10_13) + len(ALL_k_1_4_11_14) + len(ALL_k_2_5_8_15) + len(ALL_k_3_6_9_12)
-    print "Stage 1 recovery: " + str(listLen) + " hypotheses found"
     for keySet in ALL_k_0_7_10_13:
         keys[0].append(keySet[0])
         keys[7].append(keySet[1])
@@ -283,11 +286,13 @@ def step1(target, messages):
         keys[5].append(keySet[1])
         keys[8].append(keySet[2])
         keys[15].append(keySet[3])
-    for keySet in ALL_k_0_7_10_13:
-        keys[0].append(keySet[0])
-        keys[7].append(keySet[1])
-        keys[10].append(keySet[2])
-        keys[13].append(keySet[3])
+    for keySet in ALL_k_3_6_9_12:
+        keys[3].append(keySet[0])
+        keys[6].append(keySet[1])
+        keys[9].append(keySet[2])
+        keys[12].append(keySet[3])
+
+    return keys
 
 
 
@@ -300,10 +305,10 @@ def intersect(a, b, cloneIfEmpty):
 
 
 # This step executes section 3.3 of the attack in full
-def step2(messages):
+def step2(ctxtBlockPairs, keys):
     possibleKeys = []
+    x, xF = ctxtBlockPairs[0]
     for i in range(len(keys[0])):
-        print "i is at " + str(i) + " out of 240..."
         for j in range(len(keys[1])):
             for k in range(len(keys[2])):
                 for l in range(len(keys[3])):
@@ -329,49 +334,16 @@ def main():
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     # Perform the attack
     createMultiplyTable() # Create table for Galois Field multiplication lookup
-    # ctxt1 = 309576198173487898485272507802272752224
-    # ctxtFaulty1 = 213524607176099836202173306380891822739
-    # ctxt2 = 266831768776891864963488848972572001878
-    # ctxtFaulty2 = 58855063624842956889966105343294270242
-    # ctxt3 = 46131487838347580498881944052497770950
-    # ctxtFaulty3 = 255539361176520542558409181556479638508
-    # fault = Fault(8, "SubBytes", "before", 0, 0)
-    # print fault.description()
-    # print communicate(target, 327423114947905701800067518410874098196, fault)
-    # print generateMessages(1)
-    # Turn ciphertexts into block arrays
-    # x1, xF1 = blockify(ctxt1, ctxtFaulty1)
-    # x2, xF2 = blockify(ctxt2, ctxtFaulty2)
-    # x3, xF3 = blockify(ctxt3, ctxtFaulty3)
-    # Perform step 1 of attack
-    messages = generateMessages(sampleSize)
-    step1(target, messages)
-    step2(messages)
 
-    # global keys
-    # print keys
-    # keys = [[] for i in range(16)]
-    # step1(x2, xF2)
-    # print keys
-    # keys = [[] for i in range(16)]
-    # step1(x3, xF3)
-    # print keys
-    # Perform step 2 of attack
-    # possibleKeys = step2(x, xF)
-    # print possibleKeys
+    ctxtBlockPairs = generateCiphertexts(target)
+    keys = step1(ctxtBlockPairs)
+    keys = step2(ctxtBlockPairs, keys)
+    print keys
 
-    # Print the key
     # Print the number of oracle interactions required
     print "Total oracle interactions: " + str(interactions)
     end = time.time()
     print str(end-start)
-
-# # Useful for verifying the delta 1 stage for a fixed ciphertext...
-def getComparitors(keys):
-    candidates = []
-    for i in range(len(keys[0])):
-        candidates.append([keys[0][i], keys[7][i], keys[10][i], keys[13][i]])
-    return candidates
 
 if (__name__ == "__main__"):
     main()
