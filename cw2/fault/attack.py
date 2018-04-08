@@ -98,6 +98,7 @@ def findDelta1Keys(x, xF):
                                 addKey(10, k10)
                                 addKey(7, k7)
 
+
 # From the paper this calculates the possible set of delta 2 values (Section 3.1)
 def findDelta2Keys(x, xF):
     for k4 in range(256):
@@ -121,6 +122,7 @@ def findDelta2Keys(x, xF):
                                 addKey(14, k14)
                                 addKey(11, k11)
 
+
 # From the paper this calculates the possible set of delta 3 values (Section 3.1)
 def findDelta3Keys(x, xF):
     for k8 in range(256):
@@ -142,6 +144,7 @@ def findDelta3Keys(x, xF):
                                 addKey(5, k5)
                                 addKey(2, k2)
                                 addKey(15, k15)
+
 
 # From the paper this calculates the possible set of delta 4 values (Section 3.1)
 def findDelta4Keys(x, xF):
@@ -165,6 +168,7 @@ def findDelta4Keys(x, xF):
                                 addKey(6, k6)
                                 addKey(3, k3)
 
+
 # From the paper this refines the keyset using the equations in Section 3.3
 def fEquation1(x, xF, k):
     f2 = sInv[ multiplyTable[14][ sInv[ x[0]   ^ k[0]  ] ^ (k[0] ^ s[ k[13] ^ k[9]  ] ^ rcon[10]) ]
@@ -177,6 +181,7 @@ def fEquation1(x, xF, k):
              ^ multiplyTable[ 9][ sInv[ xF[7]  ^ k[7]  ] ^ (k[3] ^ s[ k[12] ^ k[8]  ])            ] ]
 
     return multiplyTable[f2][141] # 2^-1 = 141 in Rijndael GF2^8 field
+
 
 # From the paper this refines the keyset using the equations in Section 3.3
 def fEquation2(x, xF, k):
@@ -191,6 +196,7 @@ def fEquation2(x, xF, k):
 
     return f
 
+
 # From the paper this refines the keyset using the equations in Section 3.3
 def fEquation3(x, xF, k):
     f = sInv[ multiplyTable[13][ sInv[ x[8]   ^ k[8]  ] ^ (k[8]  ^ k[4])  ]
@@ -203,6 +209,7 @@ def fEquation3(x, xF, k):
             ^ multiplyTable[11][ sInv[ xF[15] ^ k[15] ] ^ (k[11] ^ k[7])  ] ]
 
     return f
+
 
 # From the paper this refines the keyset using the equations in Section 3.3
 def fEquation4(x, xF, k):
@@ -217,21 +224,53 @@ def fEquation4(x, xF, k):
 
     return multiplyTable[f3][246] # 3^-1 = 246 in Rijndael GF2^8 field
 
+
+# Given a ctxt and faulty ctxt it will produce lists of blocks of the ciphertext
 def blockify(ctxt, ctxtFaulty):
     x =  [ _getBlock(ctxt, i)       for i in range(16) ]
     xF = [ _getBlock(ctxtFaulty, i) for i in range(16) ]
     return x, xF
 
+
 # Given a ciphertext it returns the corresponding byte block
 def _getBlock(ctxt, number):
     return (ctxt >> (120-(number*8))) & 0xFF
 
+
+# This step executes section 3.1 of the attack in full
 def step1(x, xF):
     findDelta1Keys(x, xF)
     findDelta2Keys(x, xF)
     findDelta3Keys(x, xF)
     findDelta4Keys(x, xF)
 
+
+
+
+# This step executes section 3.3 of the attack in full
+def step2(x, xF):
+    possibleKeys = []
+    for i in range(len(keys[0])):
+        print "i is at " + str(i) + " out of 240..."
+        for j in range(len(keys[1])):
+            for k in range(len(keys[2])):
+                for l in range(len(keys[3])):
+                    key = [keys[ 0][i], keys[ 1][j], keys[ 2][k], keys[ 3][l],
+                           keys[ 4][j], keys[ 5][k], keys[ 6][l], keys[ 7][i],
+                           keys[ 8][k], keys[ 9][l], keys[10][i], keys[11][j],
+                           keys[12][l], keys[13][i], keys[14][j], keys[15][k]]
+                    f = fEquation1(x, xF, key)
+                    if fEquation2(x, xF, key) == f:
+                        if fEquation3(x, xF, key) == f:
+                            if fEquation4(x, xF, key) == f:
+                                possibleKeys.append(key)
+    return possibleKeys
+
+
+
+
+
+# This is the main function of the attack
 def main():
     # Spin up a subprocess.
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
@@ -243,16 +282,9 @@ def main():
     x, xF = blockify(ctxt, ctxtFaulty)
     # Perform step 1 of attack
     step1(x, xF)
-
-    key = [1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16]
     # Perform step 2 of attack
-    print fEquation1(x, xF, key)
-    print fEquation2(x, xF, key)
-    print fEquation3(x, xF, key)
-    print fEquation4(x, xF, key)
-
-
-    # print keys
+    possibleKeys = step2(x, xF)
+    print possibleKeys
 
     # Print the key
     # Print the number of oracle interactions required
