@@ -3,7 +3,7 @@ from matrices import s, sInv, rcon
 from fault import Fault
 
 # Define global variable for interactions with oracle
-sampleSize = 100
+sampleSize = 10
 interactions = 0
 multiplyTable = []
 keys = [[] for i in range(16)]  # Initialise the key list to fit 16*8bit key bytes
@@ -104,20 +104,19 @@ def findDelta1Keys(x, xF):
 def findDelta2Keys(x, xF):
     k_1_4_11_14 = []
     for k4 in range(256):
-        line1 = sInv[x[4] ^ k4] ^ sInv[xF[4] ^ k4]
-        delta2 = multiplyTable[line1][246] # 3^-1 = 246 in Rijndael GF2^8 field
+        delta2 = sInv[x[4] ^ k4] ^ sInv[xF[4] ^ k4]
 
         for k1 in range(256):
             line2 = sInv[x[1] ^ k1] ^ sInv[xF[1] ^ k1]
-            if multiplyTable[line2][141] == delta2: # 2^-1 = 141 in Rijndael GF2^8 field
+            if line2 == delta2:
 
                 for k14 in range(256):
                     line3 = sInv[x[14] ^ k14] ^ sInv[xF[14] ^ k14]
-                    if line3 == delta2:
+                    if multiplyTable[line3][246] == delta2: # 3^-1 = 246 in Rijndael GF2^8 field
 
                         for k11 in range(256):
                             line4 = sInv[x[11] ^ k11] ^ sInv[xF[11] ^ k11]
-                            if line4 == delta2:
+                            if multiplyTable[line4][141] == delta2: # 2^-1 = 141 in Rijndael GF2^8 field
                                 # Add this combination to the key store
                                 k_1_4_11_14.append([k1, k4, k11, k14])
     k_1_4_11_14.sort()
@@ -151,19 +150,20 @@ def findDelta3Keys(x, xF):
 def findDelta4Keys(x, xF):
     k_3_6_9_12 = []
     for k12 in range(256):
-        delta4 = sInv[x[12] ^ k12] ^ sInv[xF[12] ^ k12]
+        line1 = sInv[x[12] ^ k12] ^ sInv[xF[12] ^ k12]
+        delta4 = multiplyTable[line1][246] # 3^-1 = 246 in Rijndael GF2^8 field
 
         for k9 in range(256):
             line2 = sInv[x[9] ^ k9] ^ sInv[xF[9] ^ k9]
-            if line2 == delta4:
+            if multiplyTable[line2][141] == delta4: # 2^-1 = 141 in Rijndael GF2^8 field
 
                 for k6 in range(256):
                     line3 = sInv[x[6] ^ k6] ^ sInv[xF[6] ^ k6]
-                    if multiplyTable[line3][246] == delta4: # 3^-1 = 246 in Rijndael GF2^8 field
+                    if line3 == delta4:
 
                         for k3 in range(256):
                             line4 = sInv[x[3] ^ k3] ^ sInv[xF[3] ^ k3]
-                            if multiplyTable[line4][141] == delta4: # 2^-1 = 141 in Rijndael GF2^8 field
+                            if line4 == delta4:
                                 # Add this combination to the key store
                                 k_3_6_9_12.append([k3, k6, k9 , k12])
     k_3_6_9_12.sort()
@@ -239,13 +239,12 @@ def _getBlock(ctxt, number):
 
 
 # This step executes section 3.1 of the attack in full
-def step1(target):
+def step1(target, messages):
     keys = [[] for i in range(16)]
     ALL_k_0_7_10_13 = []
     ALL_k_1_4_11_14 = []
     ALL_k_2_5_8_15  = []
     ALL_k_3_6_9_12  = []
-    messages = generateMessages(sampleSize)
     fault = Fault(8, "SubBytes", "before", 0, 0)
     firstTime = True
     for m in messages:
@@ -263,32 +262,32 @@ def step1(target):
         ALL_k_3_6_9_12  = intersect(k_3_6_9_12,  ALL_k_3_6_9_12,  firstTime)
         firstTime = False
 
-    print str(len(ALL_k_0_7_10_13))
-    print str(len(ALL_k_1_4_11_14))
-    print str(len(ALL_k_2_5_8_15 ))
-    print str(len(ALL_k_3_6_9_12 ))
+    print ALL_k_0_7_10_13
+    print ALL_k_1_4_11_14
+    print ALL_k_2_5_8_15
+    print ALL_k_3_6_9_12
     listLen = len(ALL_k_0_7_10_13) + len(ALL_k_1_4_11_14) + len(ALL_k_2_5_8_15) + len(ALL_k_3_6_9_12)
     print "Stage 1 recovery: " + str(listLen) + " hypotheses found"
-    # for keySet in ALL_k_0_7_10_13:
-    #     keys[0].append(keySet[0])
-    #     keys[7].append(keySet[1])
-    #     keys[10].append(keySet[2])
-    #     keys[13].append(keySet[3])
-    # for keySet in ALL_k_1_4_11_14:
-    #     keys[1].append(keySet[0])
-    #     keys[4].append(keySet[1])
-    #     keys[11].append(keySet[2])
-    #     keys[14].append(keySet[3])
-    # for keySet in ALL_k_2_5_8_15:
-    #     keys[2].append(keySet[0])
-    #     keys[5].append(keySet[1])
-    #     keys[8].append(keySet[2])
-    #     keys[15].append(keySet[3])
-    # for keySet in ALL_k_0_7_10_13:
-    #     keys[0].append(keySet[0])
-    #     keys[7].append(keySet[1])
-    #     keys[10].append(keySet[2])
-    #     keys[13].append(keySet[3])
+    for keySet in ALL_k_0_7_10_13:
+        keys[0].append(keySet[0])
+        keys[7].append(keySet[1])
+        keys[10].append(keySet[2])
+        keys[13].append(keySet[3])
+    for keySet in ALL_k_1_4_11_14:
+        keys[1].append(keySet[0])
+        keys[4].append(keySet[1])
+        keys[11].append(keySet[2])
+        keys[14].append(keySet[3])
+    for keySet in ALL_k_2_5_8_15:
+        keys[2].append(keySet[0])
+        keys[5].append(keySet[1])
+        keys[8].append(keySet[2])
+        keys[15].append(keySet[3])
+    for keySet in ALL_k_0_7_10_13:
+        keys[0].append(keySet[0])
+        keys[7].append(keySet[1])
+        keys[10].append(keySet[2])
+        keys[13].append(keySet[3])
 
 
 
@@ -301,7 +300,7 @@ def intersect(a, b, cloneIfEmpty):
 
 
 # This step executes section 3.3 of the attack in full
-def step2(x, xF):
+def step2(messages):
     possibleKeys = []
     for i in range(len(keys[0])):
         print "i is at " + str(i) + " out of 240..."
@@ -345,7 +344,10 @@ def main():
     # x2, xF2 = blockify(ctxt2, ctxtFaulty2)
     # x3, xF3 = blockify(ctxt3, ctxtFaulty3)
     # Perform step 1 of attack
-    step1(target)
+    messages = generateMessages(sampleSize)
+    step1(target, messages)
+    step2(messages)
+
     # global keys
     # print keys
     # keys = [[] for i in range(16)]
