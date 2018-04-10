@@ -35,6 +35,8 @@ def generateCiphertexts(target, messages):
     for m in messages:
         ctxt       = communicate(target, m, None)
         ctxtFaulty = communicate(target, m, fault)
+        while ctxtFaulty == ctxt:
+            ctxtFaulty = communicate(target, m, fault)
         x, xF = blockify(ctxt, ctxtFaulty)
         ctxtBlockPairs.append([x, xF])
         ctxts.append(ctxt)
