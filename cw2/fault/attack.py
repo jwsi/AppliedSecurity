@@ -173,10 +173,10 @@ def getAESKey(k):
         k[7]  = k[7]  ^ k[3]
 
         # Final step is harder as we have to reverse the key-schedule core on the last 32 bit word...
-        k[0] = k[0] ^ s[ k[13] ] ^ rcon[i]
-        k[1] = k[1] ^ s[ k[14] ]
-        k[2] = k[2] ^ s[ k[15] ]
-        k[3] = k[3] ^ s[ k[12] ]
+        k[0]  = k[0]  ^ s[ k[13] ] ^ rcon[i]
+        k[1]  = k[1]  ^ s[ k[14] ]
+        k[2]  = k[2]  ^ s[ k[15] ]
+        k[3]  = k[3]  ^ s[ k[12] ]
     return k
 
 
