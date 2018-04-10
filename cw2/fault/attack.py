@@ -3,8 +3,9 @@ from fault import Fault
 from delta import findDelta1Keys, findDelta2Keys, findDelta3Keys, findDelta4Keys
 from fequations import fEquation1, fEquation2, fEquation3, fEquation4
 from Crypto.Cipher import AES
+from matrices import rcon, s
 
-# Define global variable for interactions with oracle
+# Define global variables for message sample size and interactions with oracle
 sampleSize = 4
 interactions = 0
 
@@ -27,18 +28,18 @@ def communicate(target, message, fault):
     return ctxt
 
 
-def generateCiphertexts(target):
-    messages = generateMessages(sampleSize)
+def generateCiphertexts(target, messages):
     print "Creating ciphertexts from message set...",
-    ctxtBlockPairs = []
+    ctxts, ctxtBlockPairs = [], []
     fault = Fault(8, "SubBytes", "before", 0, 0)
     for m in messages:
         ctxt       = communicate(target, m, None)
         ctxtFaulty = communicate(target, m, fault)
         x, xF = blockify(ctxt, ctxtFaulty)
         ctxtBlockPairs.append([x, xF])
+        ctxts.append(ctxt)
     print "   COMPLETE!"
-    return ctxtBlockPairs
+    return ctxts, ctxtBlockPairs
 
 
 # Generate a given amount of random 128bit messages
@@ -62,6 +63,15 @@ def blockify(ctxt, ctxtFaulty):
     return x, xF
 
 
+# Given a 16 element byte list the function will return a 128 bit integer
+def deBlockify(byteList):
+    result = 0
+    for index, byte in enumerate(byteList):
+        result += byte << (120-(index*8))
+        index += 1
+    return result
+
+
 # Given a ciphertext it returns the corresponding byte block
 def _getBlock(ctxt, number):
     return (ctxt >> (120-(number*8))) & 0xFF
@@ -69,6 +79,7 @@ def _getBlock(ctxt, number):
 
 # This step executes section 3.1 of the attack in full
 def step1(ctxtBlockPairs):
+    print "\nPerforming stage 1 of the attack...",
     keys = [[] for _ in range(16)]
     ALL_k_0_7_10_13 = []
     ALL_k_1_4_11_14 = []
@@ -107,11 +118,12 @@ def step1(ctxtBlockPairs):
         keys[6].append(keySet[1])
         keys[9].append(keySet[2])
         keys[12].append(keySet[3])
-
+    print "        COMPLETE! -> ",
+    print "Possible keys found: " + str(len(keys[0]) * len(keys[1]) * len(keys[2]) * len(keys[3]))
     return keys
 
 
-# Returns the intersection of two lists
+# Returns the intersection of two lists and removes duplicates
 def intersect(a, b, cloneIfEmpty):
     if cloneIfEmpty and (len(a) == 0 or len(b) == 0):
         return copy.copy(b) if len(a) == 0 else copy.copy(a)
@@ -120,6 +132,8 @@ def intersect(a, b, cloneIfEmpty):
 
 # This step executes section 3.3 of the attack in full
 def step2(ctxtBlockPairs, keys):
+    print "Performing stage 2 of the attack...",
+    possibleKeys = []
     x, xF = ctxtBlockPairs[0]
     for i in range(len(keys[0])):
         for j in range(len(keys[1])):
@@ -133,12 +147,55 @@ def step2(ctxtBlockPairs, keys):
                     if fEquation2(x, xF, key) == f:
                         if fEquation3(x, xF, key) == f:
                             if fEquation4(x, xF, key) == f:
-                                return key
+                                possibleKeys.append(key)
+    print "        COMPLETE! -> ",
+    print "Possible keys found: " + str(len(possibleKeys))
+    return possibleKeys
 
 
-# Given the 10th round key this function will backtrack to the original AES key
-def getAESKey(roundKey):
-    pass
+# Given the 10th round key this function will backtrack to the original AES key (see Rijndael key schedule Wiki)
+def getAESKey(k):
+    for i in range(10, 0, -1):
+        # Last 32 bit word (as xor is self-inverse perform forward operation again...)
+        k[12] = k[12] ^ k[8]
+        k[13] = k[13] ^ k[9]
+        k[14] = k[14] ^ k[10]
+        k[15] = k[15] ^ k[11]
+
+        k[8]  = k[8]  ^ k[4]
+        k[9]  = k[9]  ^ k[5]
+        k[10] = k[10] ^ k[6]
+        k[11] = k[11] ^ k[7]
+
+        k[4]  = k[4]  ^ k[0]
+        k[5]  = k[5]  ^ k[1]
+        k[6]  = k[6]  ^ k[2]
+        k[7]  = k[7]  ^ k[3]
+
+        # Final step is harder as we have to reverse the key-schedule core on the last 32 bit word...
+        k[0] = k[0] ^ s[ k[13] ] ^ rcon[i]
+        k[1] = k[1] ^ s[ k[14] ]
+        k[2] = k[2] ^ s[ k[15] ]
+        k[3] = k[3] ^ s[ k[12] ]
+    return k
+
+
+# Given a list of byte arrays for keys, a list of messages and a list of ciphertexts this will return a valid key
+def verifyKeys(keys, messages, ctxtBlockPairs):
+    print "Performing key verification...",
+    for key in keys:
+        AESKey = getAESKey(key)
+        failure = False
+        for i in range(len(messages)):
+            obj = AES.new(str(bytearray(AESKey)))
+            decryption = obj.decrypt(str(bytearray(ctxtBlockPairs[i][0])))
+            if deBlockify([ord(x) for x in decryption]) != messages[i]:
+                failure = True
+        if not failure:
+            print "             COMPLETE!\n"
+            return deBlockify(key)
+    print "The key could not be recovered - please try again..."
+    raise Exception("Key recovery failure")
 
 
 # This is the main function of the attack
@@ -147,12 +204,13 @@ def main():
     # Spin up a subprocess.
     target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     # Perform the attack
-    ctxtBlockPairs = generateCiphertexts(target)
+    messages = generateMessages(sampleSize)
+    print messages
+    _, ctxtBlockPairs = generateCiphertexts(target, messages)
     keys = step1(ctxtBlockPairs)
-    key  = step2(ctxtBlockPairs, keys)
-    print key
-    AESKey = getAESKey(key)
-
+    keys  = step2(ctxtBlockPairs, keys)
+    key = verifyKeys(keys, messages, ctxtBlockPairs)
+    print "Key successfully recovered: ""{0:X}".format(key) + " (hex string)"
     # Print the number of oracle interactions required
     print "Total oracle interactions: " + str(interactions)
     end = time.time()
