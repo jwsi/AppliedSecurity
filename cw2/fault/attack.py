@@ -18,7 +18,7 @@ def communicate(target, message, fault):
     else:
         fault_string = fault.description()
     message_string  = "{0:X}".format(message)
-    target.stdin.write(fault_string + "\n")
+    target.stdin.write(fault_string    + "\n")
     target.stdin.write(message_string  + "\n")
     target.stdin.flush()
 
@@ -30,18 +30,18 @@ def communicate(target, message, fault):
 
 def generate_ciphertexts(target, messages):
     print "Creating ciphertexts from message set...",
-    ctxts, ctxtBlockPairs = [], []
+    ctxts, ctxt_blocks = [], []
     fault = Fault(8, "SubBytes", "before", 0, 0)
     for m in messages:
-        ctxt       = communicate(target, m, None)
-        ctxtFaulty = communicate(target, m, fault)
-        while ctxtFaulty == ctxt: # A zero fault may be induced which can throw off the attack...
-            ctxtFaulty = communicate(target, m, fault)
-        x, xF = blockify(ctxt, ctxtFaulty)
-        ctxtBlockPairs.append([x, xF])
+        ctxt        = communicate(target, m, None)
+        ctxt_faulty = communicate(target, m, fault)
+        while ctxt_faulty == ctxt: # A zero fault may be induced which can throw off the attack...
+            ctxt_faulty = communicate(target, m, fault)
+        x, xF = blockify(ctxt), blockify(ctxt_faulty)
+        ctxt_blocks.append([x, xF])
         ctxts.append(ctxt)
     print "   COMPLETE!"
-    return ctxts, ctxtBlockPairs
+    return ctxts, ctxt_blocks
 
 
 # Generate a given amount of random 128bit messages
@@ -58,11 +58,10 @@ def generate_messages(amount):
     return messages
 
 
-# Given a ctxt and faulty ctxt it will produce lists of blocks of the ciphertext
-def blockify(ctxt, ctxtFaulty):
-    x =  [ _getBlock(ctxt, i)       for i in range(16) ]
-    xF = [ _getBlock(ctxtFaulty, i) for i in range(16) ]
-    return x, xF
+# Given a 128 bit number the function will return a 16 element byte list
+def blockify(number):
+    byte_list =  [ _getBlock(number, i) for i in range(16) ]
+    return byte_list
 
 
 # Given a 128 bit number it returns the corresponding byte block
@@ -80,12 +79,12 @@ def deblockify(byteList):
 
 
 # This step executes section 3.1 of the attack in full
-def step1(ctxtBlockPairs):
+def step1(ctxt_blocks):
     print "\nPerforming stage 1 of the attack...",
     keys = [[] for _ in range(16)]
     ALL_k_0_7_10_13, ALL_k_1_4_11_14, ALL_k_2_5_8_15, ALL_k_3_6_9_12 = [], [], [], []
     firstTime = True
-    for (x, xF) in ctxtBlockPairs:
+    for x, xF in ctxt_blocks:
         k_0_7_10_13, k_1_4_11_14 = find_delta1_keys(x, xF), find_delta2_keys(x, xF)
         k_2_5_8_15,  k_3_6_9_12  = find_delta3_keys(x, xF), find_delta4_keys(x, xF)
 
@@ -114,7 +113,7 @@ def step1(ctxtBlockPairs):
 
 # Returns the intersection of two lists and removes duplicates
 def intersect(a, b, cloneIfEmpty):
-    if cloneIfEmpty and (len(a) == 0 or len(b) == 0):
+    if cloneIfEmpty and (len(a) == 0 or len(b) == 0): # Return a copy of a list if one is empty
         return copy.copy(b) if len(a) == 0 else copy.copy(a)
     return [list(x) for x in set(tuple(x) for x in a).intersection(set(tuple(x) for x in b))]
 
@@ -170,14 +169,14 @@ def getAESKey(k):
 
 
 # Given a list of byte arrays for keys, a list of messages and a list of ciphertexts this will return a valid key
-def verify_keys(keys, messages, ctxtBlockPairs):
+def verify_keys(keys, messages, ctxt_blocks):
     print "Performing key verification...",
     for key in keys:
         AESKey = getAESKey(key)
         failure = False
         for i in range(len(messages)):
             obj = AES.new(str(bytearray(AESKey)))
-            decryption = obj.decrypt(str(bytearray(ctxtBlockPairs[i][0])))
+            decryption = obj.decrypt(str(bytearray(ctxt_blocks[i][0])))
             if deblockify([ord(x) for x in decryption]) != messages[i]:
                 failure = True
         if not failure:
