@@ -1,17 +1,17 @@
 class Fault:
     def __init__(self, round, function, time, row, column):
-        self._setRound(round)
-        self._setFunction(function)
-        self._setTime(time)
-        self._setPosition(row, column)
+        self._set_round(round)
+        self._set_function(function)
+        self._set_time(time)
+        self._set_position(row, column)
 
-    def _setRound(self, round):
+    def _set_round(self, round):
         if 0 <= round < 11:
             self.round = round
         else:
             raise Exception("Invalid fault round number")
 
-    def _setFunction(self, function):
+    def _set_function(self, function):
         if function == "AddRoundKey":
             self.function = 0
         elif function == "SubBytes":
@@ -23,7 +23,7 @@ class Fault:
         else:
             raise Exception("Invalid function name specified in fault")
 
-    def _setTime(self, time):
+    def _set_time(self, time):
         if time == "before":
             self.time = 0
         elif time == "after":
@@ -31,7 +31,7 @@ class Fault:
         else:
             raise Exception("Invalid time specified in fault")
 
-    def _setPosition(self, row, column):
+    def _set_position(self, row, column):
         if 0 <= row < 4 and 0 <= column < 4:
             self.row = row
             self.column = column

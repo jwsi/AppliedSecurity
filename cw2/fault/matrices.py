@@ -19,7 +19,7 @@ s = [
 ]
 
 # This is the Rijndael Inverse S-Box table
-sInv = [
+s_inv = [
     0x52, 0x09, 0x6A, 0xD5, 0x30, 0x36, 0xA5, 0x38, 0xBF, 0x40, 0xA3, 0x9E, 0x81, 0xF3, 0xD7, 0xFB,
     0x7C, 0xE3, 0x39, 0x82, 0x9B, 0x2F, 0xFF, 0x87, 0x34, 0x8E, 0x43, 0x44, 0xC4, 0xDE, 0xE9, 0xCB,
     0x54, 0x7B, 0x94, 0x32, 0xA6, 0xC2, 0x23, 0x3D, 0xEE, 0x4C, 0x95, 0x0B, 0x42, 0xFA, 0xC3, 0x4E,
@@ -59,22 +59,22 @@ rcon = [
 ]
 
 # This table is a lookup table for GF28 Multiplication
-multiplyTable = []
+multiply_table = []
 
 # This function creates a lookup table for multiplication in the Galois Field of 2^8.
-def _createMultiplyTable():
-    global multiplyTable
+def _create_multiply_table():
+    global multiply_table
     print "Precomputing GF2^8 multiplication table...",
     for i in range(256):
-        subTable = []
+        sub_table = []
         for j in range(256):
-            subTable.append(_gf28Multiply(i, j))
-        multiplyTable.append(subTable)
+            sub_table.append(_gf28_multiply(i, j))
+        multiply_table.append(sub_table)
     print " COMPLETE!"
 
 
 # Modified peasants algorithm to perform multiplication in GF8 under the Rijndael irreducible polynomial.
-def _gf28Multiply(a, b):
+def _gf28_multiply(a, b):
     # Setup initial values + ensure 8 bit max
     p = 0
     a = a & 255
@@ -95,4 +95,4 @@ def _gf28Multiply(a, b):
     return p
 
 # Create the multiply table at import time
-_createMultiplyTable()
+_create_multiply_table()
