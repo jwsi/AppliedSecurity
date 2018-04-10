@@ -208,13 +208,15 @@ def main():
     print messages
     _, ctxtBlockPairs = generateCiphertexts(target, messages)
     keys = step1(ctxtBlockPairs)
-    keys  = step2(ctxtBlockPairs, keys)
-    key = verifyKeys(keys, messages, ctxtBlockPairs)
-    print "Key successfully recovered: ""{0:X}".format(key) + " (hex string)"
+    keys = step2(ctxtBlockPairs, keys)
+    key  = verifyKeys(keys, messages, ctxtBlockPairs)
+
+    end = time.time()
+    print "Time taken: " + str(round(end - start, 3)) + " seconds\n"
+    # Print the target material recovered
+    print "Key successfully recovered (hex string): " + "{0:X}".format(key)
     # Print the number of oracle interactions required
     print "Total oracle interactions: " + str(interactions)
-    end = time.time()
-    print str(end-start)
 
 if (__name__ == "__main__"):
     main()
