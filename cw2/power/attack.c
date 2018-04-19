@@ -1,8 +1,14 @@
 #include "attack.h"
 
 // Define global constants here...
-#define SAMPLE_SIZE 100
+#define SAMPLE_SIZE 10
 #define GOT printf("Got to line %d\n", __LINE__)
+
+
+
+
+// -----------------------------------------------------------------------------
+// GLOBALS ---------------------------------------------------------------------
 
 pid_t pid        = 0;    // process ID (of either parent or child) from fork
 
@@ -16,11 +22,17 @@ FILE* target_in  = NULL; // buffered attack target output stream
 typedef struct trace {
     int length;
     uint8_t *values;
-    char msg[33];
+    char msg[32];
 } trace_t;
 
 // Define the global traces object
 trace_t *traces;
+
+
+
+
+// -----------------------------------------------------------------------------
+// FUNCTIONS -------------------------------------------------------------------
 
 // This function interacts with the attack target and generates a trace structure
 void interact(trace_t *trace, const int j, const int i ) {
@@ -47,7 +59,9 @@ void interact(trace_t *trace, const int j, const int i ) {
   if( 1 != fscanf( target_out, "\n%32c", trace->msg ) ) {
     abort();
   }
+  printf("%s\n", trace->msg);
 }
+
 
 // This function generates a number of power traces equal to the sample size
 void generate_traces(){
@@ -58,11 +72,14 @@ void generate_traces(){
     }
 }
 
+
 // This is the main attack function
 void attack(){
     generate_traces();
 }
 
+
+// This function cleans up and frees up variables
 void cleanup( int s ){
   // Close the   buffered communication handles.
   fclose( target_in  );
@@ -74,6 +91,12 @@ void cleanup( int s ){
   close( attack_raw[ 0 ] );
   close( attack_raw[ 1 ] );
 
+  // Free traces array and internal trace structures
+  for (int i=0; i<SAMPLE_SIZE; i++){
+      free(traces[i].values);
+  }
+  free(traces);
+
   // Forcibly terminate the attack target process.
   if( pid > 0 ) {
     kill( pid, SIGKILL );
@@ -83,6 +106,9 @@ void cleanup( int s ){
   exit( s );
 }
 
+
+// -----------------------------------------------------------------------------
+// MAIN ------------------------------------------------------------------------
 
 int main( int argc, char* argv[] ) {
   // Ensure we clean-up correctly if Control-C (or similar) is signalled.
