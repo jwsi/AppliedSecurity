@@ -78,7 +78,7 @@ void attack(){
 }
 
 
-// This function cleans up and frees up variables
+// This function cleans up and frees variables
 void cleanup( int s ){
     // Close the   buffered communication handles.
     fclose( target_in  );
