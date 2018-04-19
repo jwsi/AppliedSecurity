@@ -6,7 +6,7 @@ from Crypto.Cipher import AES
 from matrices import rcon, s
 
 # Define global variables for message sample size and interactions with oracle
-sample_size = 4
+sample_size = 2
 interactions = 0
 
 # This function communicates with the attack target
@@ -28,6 +28,7 @@ def communicate(target, message, fault):
     return ctxt
 
 
+# Given a set of plaintexts this function will generate a list of ciphertexts + faulty pairs
 def generate_ciphertexts(target, messages):
     print "Creating ciphertexts from message set...",
     ctxts, ctxt_blocks = [], []
@@ -204,6 +205,7 @@ def main():
     print "Key successfully recovered (hex string): " + "{0:X}".format(key)
     # Print the number of oracle interactions required
     print "Total oracle interactions: " + str(interactions)
+
 
 if (__name__ == "__main__"):
     main()
