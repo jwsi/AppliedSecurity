@@ -4,7 +4,7 @@
 # which can be found via http://creativecommons.org (and should be included as
 # LICENSE.txt within the associated archive or repository).
 
-modmul : $(wildcard *.[ch])
+attack : $(wildcard *.[ch])
 	@gcc -Wall -std=gnu99 -O3 -o ${@} $(filter %.c, ${^}) -lgmp
 
 .DEFAULT_GOAL = all
@@ -12,4 +12,4 @@ modmul : $(wildcard *.[ch])
 all   : attack
 
 clean :
-	@rm -f core attack
+	@rm -f attack
