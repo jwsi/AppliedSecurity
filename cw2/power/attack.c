@@ -19,9 +19,11 @@ FILE* target_in  = NULL; // buffered attack target output stream
 
 // Define a structure for a trace
 typedef struct trace {
-      int length;
-      uint8_t *values;
-      char msg[32];
+    int block;
+    char sector[32+1]; // Add extra value for null terminator
+    int length;
+    uint8_t *values;
+    char msg[32+1]; // Add extra value for null terminator
 } trace_t;
 
 // Define the global traces object
@@ -34,10 +36,10 @@ trace_t *traces;
 // FUNCTIONS -------------------------------------------------------------------
 
 // This function interacts with the attack target and generates a trace structure
-void interact(trace_t *trace, const int j, const int i ) {
+void interact(trace_t *trace, const int block, const int sector ) {
     // Send block and sector to attack target...
-    fprintf( target_in, "%d\n"   , j );  fflush( target_in );
-    fprintf( target_in, "%032X\n", i );  fflush( target_in );
+    fprintf( target_in, "%d\n"   , block  );  fflush( target_in );
+    fprintf( target_in, "%032X\n", sector );  fflush( target_in );
 
     // Read length of power trace
     if( 1 != fscanf( target_out, "%d", &trace->length ) ) {
@@ -58,13 +60,34 @@ void interact(trace_t *trace, const int j, const int i ) {
     if( 1 != fscanf( target_out, "\n%32c", trace->msg ) ) {
         abort();
     }
-    printf("%s\n", trace->msg);
+    // Store the block and the sector in the trace
+    trace->block  = block;
+    sprintf(trace->sector, "%032x", sector);
+    // Debug prints
+    // printf("%s\n", trace->msg);
+    // printf("%s\n", trace->sector);
+    // printf("sector: %d\n", sector);
 }
+
+
+uint8_t hexchar_to_byte(char hex){
+    uint8_t dec = (hex > '9')? (hex &~ 0x20) - 'A' + 10: (hex - '0');
+    return dec;
+}
+
+
+// Given a valid trace and a byte number it will return the byte from the sector number
+uint8_t get_sector_byte(trace_t *trace, int byte_number){
+    uint8_t dec1 = hexchar_to_byte(trace->sector[byte_number*2]);
+    uint8_t dec2 = hexchar_to_byte(trace->sector[byte_number*2 + 1]);
+    return (dec1 * 16) + dec2;
+}
+
 
 
 // This function generates a number of power traces equal to the sample size
 void generate_traces(){
-      // Allocate the global traces array based on the sample size
+    // Allocate the global traces array based on the sample size
     traces = malloc(sizeof(trace_t) * SAMPLE_SIZE);
     for (int i=0; i<SAMPLE_SIZE; i++){
         interact(&traces[i], -1, i*50);
@@ -72,9 +95,27 @@ void generate_traces(){
 }
 
 
+void calculate_key1(){
+    // Iterate through each key block in the AES state table in Round Key 1
+    for (int sample=0; sample < SAMPLE_SIZE; sample++){
+        for (int byte_number=0; byte_number<16; byte_number++){
+            for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
+                // xor with sector byte
+                // key_byte ^ get_sector_byte(&traces[sample], byte_number);
+
+                // Apply sbox
+                // Apply hamming weight
+            }
+        }
+    }
+    //correlate matrix to power trace
+}
+
+
 // This is the main attack function
 void attack(){
     generate_traces();
+    calculate_key1();
 }
 
 
