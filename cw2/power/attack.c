@@ -1,7 +1,7 @@
 #include "attack.h"
 
 // Define global constants here...
-#define SAMPLE_SIZE 100
+#define SAMPLE_SIZE 50
 #define GOT printf("Got to line %d\n", __LINE__)
 
 
@@ -30,8 +30,7 @@ typedef struct trace {
 int STD_LENGTH;
 // Define the global traces object
 trace_t *traces;
-// Define an array to store byte x for each sector of each sample
-// uint8_t *sector_byte;
+
 // Define the corrolation matrix, v and h
 double **correlation;
 // uint8_t **v;
@@ -125,34 +124,32 @@ int byte_hamming_weight(uint8_t byte){
 void calculate_h_matrix(int byte){
     uint8_t tmp;
     uint8_t sector_byte;
-    for (int sample=0; sample < SAMPLE_SIZE; sample++){
-        sector_byte = get_sector_byte(&traces[sample], byte);
-        for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
+    for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
+        for (int sample=0; sample < SAMPLE_SIZE; sample++){
+            sector_byte = get_sector_byte(&traces[sample], byte);
             tmp = sector_byte ^ key_byte;
             h[key_byte][sample] = byte_hamming_weight(s[tmp]);
         }
     }
 }
 
-//
-// void calculate_h_matrix(){
-//     for (int i=0; i<SAMPLE_SIZE; i++){
-//         for (int j=0; j<256; j++){
-//             h[j][i] = byte_hamming_weight(v[j][i]);
-//         }
-//     }
-// }
 
 void calculate_power_matrix(){
-    for (int sample=0; sample < SAMPLE_SIZE; sample++){
-        for (int value=0; value < STD_LENGTH; value++){
+    for (int value=0; value < STD_LENGTH; value++){
+        for (int sample=0; sample < SAMPLE_SIZE; sample++){
             real_power[value][sample] = traces[sample].values[value];
         }
     }
 }
 
 
-double correlate(uint8_t *x, uint8_t *y){
+double correlate(const uint8_t *x, const uint8_t *y){
+    // for (int i=0; i<SAMPLE_SIZE; i++){
+    //     printf("%u, %u\n", x[i], y[i]);
+    // }
+    // printf("forthelols\n");
+    // printf("%u, %u\n", x[0], y[0]);
+    // printf("%u, %u\n", x[1], y[1]);
     double x_bar = 0, y_bar = 0;
     // Calculate the mean for both classes
     for (int i =0; i < SAMPLE_SIZE; i++){
@@ -161,6 +158,7 @@ double correlate(uint8_t *x, uint8_t *y){
     }
     x_bar = x_bar / SAMPLE_SIZE;
     y_bar = y_bar / SAMPLE_SIZE;
+    // printf("%f, %f\n", x_bar, y_bar);
 
     // Calculate the correlation coefficient
     double numerator = 0, denominator1 = 0, denominator2 = 0;
@@ -169,6 +167,7 @@ double correlate(uint8_t *x, uint8_t *y){
         denominator1 += pow((x[i] - x_bar), 2);
         denominator2 += pow((y[i] - y_bar), 2);
     }
+    // printf("%f, %f, %f\n", numerator, denominator1, denominator2);
     return numerator / (sqrt(denominator1) * sqrt(denominator2));
 }
 
@@ -179,12 +178,6 @@ void allocate_matrices(){
     for (int i=0; i<STD_LENGTH; i++){
         correlation[i] = (double*) malloc(sizeof(double) * 256);
     }
-    // // v matrix is of size SAMPLE_SIZE x 256
-    // v = (uint8_t**) malloc(sizeof(uint8_t*) * 256);
-    // for (int i=0; i<256; i++){
-    //     v[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
-    // }
-    // h matrix is of size 256 x SAMPLE_SIZE
     h = (uint8_t**) malloc(sizeof(uint8_t*) * 256);
     for (int i=0; i<256; i++){
         h[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
@@ -202,19 +195,23 @@ void attack(){
     generate_traces(); // Gather traces from oracle
     allocate_matrices(); // Allocate memory for matrices
     calculate_power_matrix(); // Calculate a matrix for power values (x=time, y=sample)
-    // sector_byte = malloc(sizeof(uint8_t) * SAMPLE_SIZE);
-    for (int byte=0; byte<16; byte++){
+    for (int byte=14; byte<16; byte++){
         printf("Finding key byte: %d\n", byte);
-        // calculate_v_matrix(byte);
         calculate_h_matrix(byte);
         double maxVal=0;
-        uint8_t calculatedKey;
+        uint8_t calculatedKey=0;
+        // int value=0, keyHyp =0;
+        // printf("hyp: %u\n", h[0][0]);
+        // printf("real: %u\n", real_power[0][0]);
         for (int value=0; value < STD_LENGTH; value++){
             for (int keyHyp = 0; keyHyp < 256; keyHyp++){
-                correlation[value][keyHyp] = correlate(h[keyHyp], real_power[value]);
+                correlation[value][keyHyp] = fabs(correlate(h[keyHyp], real_power[value]));
+                // printf("correlation = %f", correlation[value][keyHyp]);
+
                 if (correlation[value][keyHyp] > maxVal){
                     maxVal = correlation[value][keyHyp];
                     calculatedKey = keyHyp;
+                    // printf("corr = %f\n", correlation[value][keyHyp]);
                 }
             }
         }
