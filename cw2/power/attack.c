@@ -1,7 +1,7 @@
 #include "attack.h"
 
 // Define global constants here...
-#define SAMPLE_SIZE 25
+#define SAMPLE_SIZE 4
 #define GOT printf("Got to line %d\n", __LINE__)
 
 
@@ -43,10 +43,10 @@ uint8_t **real_power;
 // FUNCTIONS -------------------------------------------------------------------
 
 // This function interacts with the attack target and generates a trace structure
-void interact(trace_t *trace, const int block, const int sector ) {
+void interact(trace_t *trace) {
     // Send block and sector to attack target...
-    fprintf( target_in, "%d\n"   , block  );  fflush( target_in );
-    fprintf( target_in, "%032X\n", sector );  fflush( target_in );
+    fprintf( target_in, "%d\n"   , trace->block  );  fflush( target_in );
+    fprintf( target_in, "%s\n", trace->sector );  fflush( target_in );
 
     // Read length of power trace
     if( 1 != fscanf( target_out, "%d", &trace->length ) ) {
@@ -67,9 +67,7 @@ void interact(trace_t *trace, const int block, const int sector ) {
     if( 1 != fscanf( target_out, "\n%32c", trace->msg ) ) {
         abort();
     }
-    // Store the block and the sector in the trace
-    trace->block  = block;
-    sprintf(trace->sector, "%032x", sector);
+
     // Debug prints
     // printf("%d\n", trace->length);
     // printf("%s\n", trace->msg);
@@ -97,15 +95,29 @@ void generate_traces(){
     printf("Generating %d power traces...", SAMPLE_SIZE);
     // Allocate the global traces array based on the sample size
     traces = malloc(sizeof(trace_t) * SAMPLE_SIZE);
-    interact(&traces[0], -1, 0);
+    traces[0].block  = -1;
+    for (int character=0; character < 32; character++){
+        sprintf(&traces[0].sector[character], "%X", 0);
+    }
+    interact(&traces[0]);
     STD_LENGTH = traces[0].length;
+
+    srand(time(NULL));
     for (int i=1; i<SAMPLE_SIZE; i++){
-        interact(&traces[i], -1, i*671088);
+        // Store the block and the sector in the trace
+        traces[i].block  = -1;
+        int r;
+        for (int character=0; character < 32; character++){
+            r = rand() % 16;
+            sprintf(&traces[i].sector[character], "%X", r);
+        }
+        interact(&traces[i]);
         if (traces[i].length != STD_LENGTH){ // Throw error if power traces not consistant length
             printf("Power trace length is not constant!\n");
             abort();
         }
     }
+
     printf(" COMPLETE!\n");
 }
 
@@ -188,7 +200,8 @@ void attack(){
     allocate_matrices(); // Allocate memory for matrices
     calculate_power_matrix(); // Calculate a matrix for power values (x=time, y=sample)
     printf("Beginning key search...\n");
-    for (int byte=13; byte<16; byte++){
+    uint8_t aes_key[32];
+    for (int byte=0; byte<16; byte++){
         printf("Finding key byte: %d\n", byte);
         calculate_h_matrix(byte);
         double maxVal=0;
@@ -202,8 +215,14 @@ void attack(){
                 }
             }
         }
+        aes_key[byte] = calculatedKey;
         printf("Key byte: %d is %u with correlation: %f\n\n", byte, calculatedKey, maxVal);
     }
+    printf("AES Key found: ");
+    for (int i=0; i<16; i++){
+        printf("%02X", aes_key[i]);
+    }
+    printf("\n");
 }
 
 
@@ -289,7 +308,7 @@ int main( int argc, char* argv[] ) {
 
     // Produce a sub-process representing the attack target.
     // execl( argv[ 1 ], argv[ 0 ], NULL ); // Use this for regular usage
-    system("/usr/local/bin/noah ./22775.D"); // Use this for macOS emulation
+    system("/usr/local/bin/noah ./27149.D"); // Use this for macOS emulation
     }
     // Abort if fork failed...
     else if( pid <  0 ) {
