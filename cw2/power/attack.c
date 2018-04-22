@@ -1,7 +1,7 @@
 #include "attack.h"
 
 // Define global constants here...
-#define SAMPLE_SIZE 4
+#define SAMPLE_SIZE 25
 #define GOT printf("Got to line %d\n", __LINE__)
 
 
@@ -118,7 +118,7 @@ void generate_traces(){
         }
     }
 
-    printf(" COMPLETE!\n");
+    printf(" COMPLETE!\n\n");
 }
 
 
@@ -202,13 +202,12 @@ void attack(){
     printf("Beginning key search...\n");
     uint8_t aes_key[32];
     for (int byte=0; byte<16; byte++){
-        printf("Finding key byte: %d\n", byte);
         calculate_h_matrix(byte);
         double maxVal=0;
         uint8_t calculatedKey=0;
         for (int value=0; value < STD_LENGTH; value++){
             for (int keyHyp = 0; keyHyp < 256; keyHyp++){
-                correlation[value][keyHyp] = fabs(correlate(h[keyHyp], real_power[value]));
+                correlation[value][keyHyp] = correlate(h[keyHyp], real_power[value]);
                 if (correlation[value][keyHyp] > maxVal){
                     maxVal = correlation[value][keyHyp];
                     calculatedKey = keyHyp;
@@ -216,9 +215,9 @@ void attack(){
             }
         }
         aes_key[byte] = calculatedKey;
-        printf("Key byte: %d is %u with correlation: %f\n\n", byte, calculatedKey, maxVal);
+        printf("Key byte %02d is %03u with correlation co-efficient: %f\n", byte, calculatedKey, maxVal);
     }
-    printf("AES Key found: ");
+    printf("\nAES Key found: ");
     for (int i=0; i<16; i++){
         printf("%02X", aes_key[i]);
     }
@@ -273,6 +272,8 @@ int main( int argc, char* argv[] ) {
     // Ensure we clean-up correctly if Control-C (or similar) is signalled.
     signal( SIGINT, &cleanup );
 
+    printf("Spawning attacker process...");
+
     // Create pipes to/from attack target
     if( pipe( target_raw ) == -1 ) {
         abort();
@@ -292,6 +293,8 @@ int main( int argc, char* argv[] ) {
         abort();
     }
 
+    printf(" COMPLETE!\n");
+    printf("Waiting for attacker process to become ready.\n\n");
     // Execute a function representing the attacker.
     attack();
     }
