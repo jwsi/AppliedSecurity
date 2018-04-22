@@ -1,7 +1,7 @@
 #include "attack.h"
 
 // Define global constants here...
-#define SAMPLE_SIZE 50
+#define SAMPLE_SIZE 25
 #define GOT printf("Got to line %d\n", __LINE__)
 
 
@@ -31,9 +31,8 @@ int STD_LENGTH;
 // Define the global traces object
 trace_t *traces;
 
-// Define the corrolation matrix, v and h
+// Define the corrolation matrix and h
 double **correlation;
-// uint8_t **v;
 uint8_t **h;
 uint8_t **real_power;
 
@@ -45,7 +44,6 @@ uint8_t **real_power;
 
 // This function interacts with the attack target and generates a trace structure
 void interact(trace_t *trace, const int block, const int sector ) {
-    // printf("sector: %d\n", sector);
     // Send block and sector to attack target...
     fprintf( target_in, "%d\n"   , block  );  fflush( target_in );
     fprintf( target_in, "%032X\n", sector );  fflush( target_in );
@@ -96,17 +94,19 @@ uint8_t get_sector_byte(trace_t *trace, int byte_number){
 
 // This function generates a number of power traces equal to the sample size
 void generate_traces(){
+    printf("Generating %d power traces...", SAMPLE_SIZE);
     // Allocate the global traces array based on the sample size
     traces = malloc(sizeof(trace_t) * SAMPLE_SIZE);
     interact(&traces[0], -1, 0);
     STD_LENGTH = traces[0].length;
     for (int i=1; i<SAMPLE_SIZE; i++){
-        interact(&traces[i], -1, i);
+        interact(&traces[i], -1, i*671088);
         if (traces[i].length != STD_LENGTH){ // Throw error if power traces not consistant length
             printf("Power trace length is not constant!\n");
             abort();
         }
     }
+    printf(" COMPLETE!\n");
 }
 
 
@@ -144,21 +144,14 @@ void calculate_power_matrix(){
 
 
 double correlate(const uint8_t *x, const uint8_t *y){
-    // for (int i=0; i<SAMPLE_SIZE; i++){
-    //     printf("%u, %u\n", x[i], y[i]);
-    // }
-    // printf("forthelols\n");
-    // printf("%u, %u\n", x[0], y[0]);
-    // printf("%u, %u\n", x[1], y[1]);
-    double x_bar = 0, y_bar = 0;
     // Calculate the mean for both classes
+    double x_bar = 0, y_bar = 0;
     for (int i =0; i < SAMPLE_SIZE; i++){
         x_bar += x[i];
         y_bar += y[i];
     }
     x_bar = x_bar / SAMPLE_SIZE;
     y_bar = y_bar / SAMPLE_SIZE;
-    // printf("%f, %f\n", x_bar, y_bar);
 
     // Calculate the correlation coefficient
     double numerator = 0, denominator1 = 0, denominator2 = 0;
@@ -167,7 +160,6 @@ double correlate(const uint8_t *x, const uint8_t *y){
         denominator1 += pow((x[i] - x_bar), 2);
         denominator2 += pow((y[i] - y_bar), 2);
     }
-    // printf("%f, %f, %f\n", numerator, denominator1, denominator2);
     return numerator / (sqrt(denominator1) * sqrt(denominator2));
 }
 
@@ -195,23 +187,18 @@ void attack(){
     generate_traces(); // Gather traces from oracle
     allocate_matrices(); // Allocate memory for matrices
     calculate_power_matrix(); // Calculate a matrix for power values (x=time, y=sample)
-    for (int byte=14; byte<16; byte++){
+    printf("Beginning key search...\n");
+    for (int byte=13; byte<16; byte++){
         printf("Finding key byte: %d\n", byte);
         calculate_h_matrix(byte);
         double maxVal=0;
         uint8_t calculatedKey=0;
-        // int value=0, keyHyp =0;
-        // printf("hyp: %u\n", h[0][0]);
-        // printf("real: %u\n", real_power[0][0]);
         for (int value=0; value < STD_LENGTH; value++){
             for (int keyHyp = 0; keyHyp < 256; keyHyp++){
                 correlation[value][keyHyp] = fabs(correlate(h[keyHyp], real_power[value]));
-                // printf("correlation = %f", correlation[value][keyHyp]);
-
                 if (correlation[value][keyHyp] > maxVal){
                     maxVal = correlation[value][keyHyp];
                     calculatedKey = keyHyp;
-                    // printf("corr = %f\n", correlation[value][keyHyp]);
                 }
             }
         }
@@ -243,12 +230,6 @@ void cleanup( int s ){
         free(correlation[i]);
     }
     free(correlation);
-    //
-    // // Free v matrix
-    // for (int i=0; i<SAMPLE_SIZE; i++){
-    //     free(v[i]);
-    // }
-    // free(v);
 
     // Free h matrix
     for (int i=0; i<SAMPLE_SIZE; i++){
@@ -308,7 +289,7 @@ int main( int argc, char* argv[] ) {
 
     // Produce a sub-process representing the attack target.
     // execl( argv[ 1 ], argv[ 0 ], NULL ); // Use this for regular usage
-    system("/usr/local/bin/noah ./27149.D"); // Use this for macOS emulation
+    system("/usr/local/bin/noah ./22775.D"); // Use this for macOS emulation
     }
     // Abort if fork failed...
     else if( pid <  0 ) {
