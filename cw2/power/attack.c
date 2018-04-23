@@ -30,6 +30,8 @@ typedef struct trace {
 int STD_LENGTH;
 // Define the global traces object
 trace_t *traces;
+// Define variable to store oracle interactions
+int interactions=0;
 
 
 
@@ -62,6 +64,8 @@ void interact(trace_t *trace) {
     if( 1 != fscanf( target_out, "\n%32c", trace->msg ) ) {
         abort();
     }
+
+    interactions++;
 
     // Debug prints
     // printf("%d\n", trace->length);
@@ -213,30 +217,51 @@ uint8_t calculate_key2_byte(double ***correlation, uint8_t ***h, uint8_t ***real
 }
 
 
+void print_aes_key(int key_number, uint8_t *key, bool raw_print){
+    if (!raw_print) { printf("\nAES Key%d found: ", key_number); }
+    for (int i=0; i<16; i++){
+        printf("%02X", key[i]);
+    }
+    if (!raw_print) { printf("\n\n"); }
+}
+
+
+void print_xts_key(uint8_t *key1, uint8_t *key2){
+    printf("\nXTS Key found: ");
+    print_aes_key(1, key1, true);
+    print_aes_key(2, key2, true);
+    printf("\n");
+}
+
+
 // This is the main attack function
 void attack(){
     // Define the corrolation matrix, h and power matrix
     generate_traces(); // Gather traces from oracle
     uint8_t **real_power;
     allocate_real_power_matrix(&real_power);
+    calculate_power_matrix(&real_power); // Calculate a matrix for power values (x=time, y=sample)
 
     // Calculate AES key 2...
     uint8_t key2[16];
+    printf("Beginning search for AES key 2...\n");
     #pragma omp parallel for shared(key2)
     for (int byte=0; byte<16; byte++){
         double **correlation;
         uint8_t **h;
         allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
-        calculate_power_matrix(&real_power); // Calculate a matrix for power values (x=time, y=sample)
         key2[byte] = calculate_key2_byte(&correlation, &h, &real_power, byte); // Search for key2 from the AES-XTS specification
     }
-    printf("\nAES Key2 found: ");
-    for (int i=0; i<16; i++){
-        printf("%02X", key2[i]);
-    }
-    printf("\n");
+    print_aes_key(2, key2, false);
 
     // Calculate AES key 1...
+    printf("Beginning search for AES key 1...\n");
+    uint8_t key1[16];
+    print_aes_key(1, key1, false);
+
+    // Show final key & oracle interactions...
+    print_xts_key(key1, key2);
+    printf("Total number of interactions: %d\n", interactions);
 }
 
 
