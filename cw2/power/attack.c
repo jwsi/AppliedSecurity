@@ -126,7 +126,7 @@ int byte_hamming_weight(uint8_t byte){
     // Increase hweight until byte is 0
     int hweight;
     for (hweight=0; byte; hweight++){ // And with byte-1 until byte is zero...
-        byte = byte & byte-1;
+        byte = byte & (byte-1);
     }
     return hweight;
 }
@@ -254,14 +254,14 @@ void attack(){
     }
     print_aes_key(2, key2, false);
 
-    // Calculate AES key 1...
-    printf("Beginning search for AES key 1...\n");
-    uint8_t key1[16];
-    print_aes_key(1, key1, false);
+    // // Calculate AES key 1...
+    // printf("Beginning search for AES key 1...\n");
+    // uint8_t key1[16];
+    // print_aes_key(1, key1, false);
 
     // Show final key & oracle interactions...
-    print_xts_key(key1, key2);
-    printf("Total number of interactions: %d\n", interactions);
+    // print_xts_key(key1, key2);
+    printf("Total number of oracle interactions: %d\n", interactions);
 }
 
 

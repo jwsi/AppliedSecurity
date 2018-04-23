@@ -5,11 +5,11 @@
 # LICENSE.txt within the associated archive or repository).
 
 CPP = /usr/local/opt/llvm/bin/clang
-CPPFLAGS = -I/usr/local/opt/llvm/include -Wall -std=gnu99 -O3 -fopenmp
+CPPFLAGS = -I/usr/local/opt/llvm/include -Wall -std=gnu99 -O3 -fopenmp -lm
 LDFLAGS = -L/usr/local/opt/llvm/lib -lgmp
 
 attack : $(wildcard *.[ch])
-	@gcc -Wall -std=gnu99 -O3 -o ${@} $(filter %.c, ${^}) -lgmp -fopenmp
+	@gcc -Wall -std=gnu99 -O3 -o ${@} $(filter %.c, ${^}) -lgmp -fopenmp -lm
 
 # Run `brew install llvm` first...
 macOS : $(wildcard *.[ch])
