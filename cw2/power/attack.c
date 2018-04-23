@@ -31,11 +31,6 @@ int STD_LENGTH;
 // Define the global traces object
 trace_t *traces;
 
-// Define the corrolation matrix and h
-double **correlation;
-uint8_t **h;
-uint8_t **real_power;
-
 
 
 
@@ -133,23 +128,23 @@ int byte_hamming_weight(uint8_t byte){
 }
 
 
-void calculate_h_matrix(int byte){
+void calculate_h_matrix(uint8_t ***h, int byte){
     uint8_t tmp;
     uint8_t sector_byte;
     for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
         for (int sample=0; sample < SAMPLE_SIZE; sample++){
             sector_byte = get_sector_byte(&traces[sample], byte);
             tmp = sector_byte ^ key_byte;
-            h[key_byte][sample] = byte_hamming_weight(s[tmp]);
+            (*h)[key_byte][sample] = byte_hamming_weight(s[tmp]);
         }
     }
 }
 
 
-void calculate_power_matrix(){
+void calculate_power_matrix(uint8_t ***real_power){
     for (int value=0; value < STD_LENGTH; value++){
         for (int sample=0; sample < SAMPLE_SIZE; sample++){
-            real_power[value][sample] = traces[sample].values[value];
+            (*real_power)[value][sample] = traces[sample].values[value];
         }
     }
 }
@@ -176,50 +171,66 @@ double correlate(const uint8_t *x, const uint8_t *y){
 }
 
 
-void allocate_matrices(){
-    // Correlation matrix is of size STD_LENGTH x (256 * 16)
-    correlation = (double**) malloc(sizeof(double*) * STD_LENGTH);
-    for (int i=0; i<STD_LENGTH; i++){
-        correlation[i] = (double*) malloc(sizeof(double) * 256);
-    }
-    h = (uint8_t**) malloc(sizeof(uint8_t*) * 256);
-    for (int i=0; i<256; i++){
-        h[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
-    }
+void allocate_real_power_matrix(uint8_t ***real_power){
     // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
-    real_power = (uint8_t**) malloc(sizeof(uint8_t*) * STD_LENGTH);
+    *real_power = (uint8_t**) malloc(sizeof(uint8_t*) * STD_LENGTH);
     for (int i=0; i<STD_LENGTH; i++){
-        real_power[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
+        (*real_power)[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
     }
+}
+
+
+void allocate_shared_matrices(double ***correlation, uint8_t ***h){
+    // Correlation matrix is of size STD_LENGTH x 256
+    *correlation = (double**) malloc(sizeof(double*) * STD_LENGTH);
+    for (int i=0; i<STD_LENGTH; i++){
+        (*correlation)[i] = (double*) malloc(sizeof(double) * 256);
+    }
+    // h matrix is of size 256 * SAMPLE_SIZE
+    *h = (uint8_t**) malloc(sizeof(uint8_t*) * 256);
+    for (int i=0; i<256; i++){
+        (*h)[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
+    }
+}
+
+
+uint8_t calculate_key2_byte(double ***correlation, uint8_t ***h, uint8_t ***real_power, int byte){
+    calculate_h_matrix(h, byte);
+    double maxVal=0;
+    uint8_t calculatedKey=0;
+    for (int value=0; value < STD_LENGTH; value++){
+        for (int keyHyp = 0; keyHyp < 256; keyHyp++){
+            (*correlation)[value][keyHyp] = correlate((*h)[keyHyp], (*real_power)[value]);
+
+            if ((*correlation)[value][keyHyp] > maxVal){
+                maxVal = (*correlation)[value][keyHyp];
+                calculatedKey = keyHyp;
+            }
+        }
+    }
+    printf("Key byte %02d is %03u with correlation co-efficient: %f\n", byte, calculatedKey, maxVal);
+    return calculatedKey;
 }
 
 
 // This is the main attack function
 void attack(){
+    // Define the corrolation matrix, h and power matrix
     generate_traces(); // Gather traces from oracle
-    allocate_matrices(); // Allocate memory for matrices
-    calculate_power_matrix(); // Calculate a matrix for power values (x=time, y=sample)
-    printf("Beginning key search...\n");
-    uint8_t aes_key[32];
+    uint8_t **real_power;
+    uint8_t key2[16];
+    allocate_real_power_matrix(&real_power);
+    #pragma omp parallel for shared(real_power)
     for (int byte=0; byte<16; byte++){
-        calculate_h_matrix(byte);
-        double maxVal=0;
-        uint8_t calculatedKey=0;
-        for (int value=0; value < STD_LENGTH; value++){
-            for (int keyHyp = 0; keyHyp < 256; keyHyp++){
-                correlation[value][keyHyp] = correlate(h[keyHyp], real_power[value]);
-                if (correlation[value][keyHyp] > maxVal){
-                    maxVal = correlation[value][keyHyp];
-                    calculatedKey = keyHyp;
-                }
-            }
-        }
-        aes_key[byte] = calculatedKey;
-        printf("Key byte %02d is %03u with correlation co-efficient: %f\n", byte, calculatedKey, maxVal);
+        double **correlation;
+        uint8_t **h;
+        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
+        calculate_power_matrix(&real_power); // Calculate a matrix for power values (x=time, y=sample)
+        key2[byte] = calculate_key2_byte(&correlation, &h, &real_power, byte); // Search for key2 from the AES-XTS specification
     }
-    printf("\nAES Key found: ");
+    printf("\nAES Key2 found: ");
     for (int i=0; i<16; i++){
-        printf("%02X", aes_key[i]);
+        printf("%02X", key2[i]);
     }
     printf("\n");
 }
@@ -237,23 +248,23 @@ void cleanup( int s ){
     close( attack_raw[ 0 ] );
     close( attack_raw[ 1 ] );
 
-    // Free traces array and internal trace structures
-    for (int i=0; i<SAMPLE_SIZE; i++){
-        free(traces[i].values);
-    }
-    free(traces);
-
-    // Free correlation matrix
-    for (int i=0; i<STD_LENGTH; i++){
-        free(correlation[i]);
-    }
-    free(correlation);
-
-    // Free h matrix
-    for (int i=0; i<SAMPLE_SIZE; i++){
-        free(h[i]);
-    }
-    free(h);
+    // // Free traces array and internal trace structures
+    // for (int i=0; i<SAMPLE_SIZE; i++){
+    //     free(traces[i].values);
+    // }
+    // free(traces);
+    //
+    // // Free correlation matrix
+    // for (int i=0; i<STD_LENGTH; i++){
+    //     free(correlation[i]);
+    // }
+    // free(correlation);
+    //
+    // // Free h matrix
+    // for (int i=0; i<SAMPLE_SIZE; i++){
+    //     free(h[i]);
+    // }
+    // free(h);
 
     // Forcibly terminate the attack target process.
     if( pid > 0 ) {
