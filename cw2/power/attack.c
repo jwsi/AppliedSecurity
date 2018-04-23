@@ -218,9 +218,11 @@ void attack(){
     // Define the corrolation matrix, h and power matrix
     generate_traces(); // Gather traces from oracle
     uint8_t **real_power;
-    uint8_t key2[16];
     allocate_real_power_matrix(&real_power);
-    #pragma omp parallel for shared(real_power)
+
+    // Calculate AES key 2...
+    uint8_t key2[16];
+    #pragma omp parallel for shared(key2)
     for (int byte=0; byte<16; byte++){
         double **correlation;
         uint8_t **h;
@@ -233,6 +235,8 @@ void attack(){
         printf("%02X", key2[i]);
     }
     printf("\n");
+
+    // Calculate AES key 1...
 }
 
 
