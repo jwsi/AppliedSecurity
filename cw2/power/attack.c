@@ -156,12 +156,13 @@ void calculate_h_matrix_key2(uint8_t ***h, int byte){
 
 
 void calculate_h_matrix_key1(uint8_t ***h, int byte){
-    uint8_t tmp, encrypted_sector_byte;
+    uint8_t tmp, encrypted_sector_byte, msg_byte;
     for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
         for (int sample=0; sample < SAMPLE_SIZE; sample++){
             encrypted_sector_byte = traces[sample].encrypted_sector[byte];
-            tmp = encrypted_sector_byte ^ key_byte;
-            (*h)[key_byte][sample] = byte_hamming_weight(s_inv[tmp]);
+            msg_byte = traces[sample].msg[byte];
+            tmp = encrypted_sector_byte ^ msg_byte;
+            (*h)[key_byte][sample] = byte_hamming_weight(s[tmp ^ key_byte]);
         }
     }
 }
@@ -282,34 +283,6 @@ void encrypt_sectors(uint8_t *key){
 }
 
 
-void devolve_key(uint8_t *k, int round_number){
-    // Given the xth round key this function will backtrack to the original AES key (see Rijndael key schedule Wiki)
-    for (int i=round_number; i>0; i--){
-        // Last 32 bit word (as xor is self-inverse perform forward operation again...)
-        k[12] = k[12] ^ k[8];
-        k[13] = k[13] ^ k[9];
-        k[14] = k[14] ^ k[10];
-        k[15] = k[15] ^ k[11];
-
-        k[8]  = k[8]  ^ k[4];
-        k[9]  = k[9]  ^ k[5];
-        k[10] = k[10] ^ k[6];
-        k[11] = k[11] ^ k[7];
-
-        k[4]  = k[4]  ^ k[0];
-        k[5]  = k[5]  ^ k[1];
-        k[6]  = k[6]  ^ k[2];
-        k[7]  = k[7]  ^ k[3];
-
-        // Final step is harder as we have to reverse the key-schedule core on the last 32 bit word...
-        k[0]  = k[0]  ^ s[ k[13] ] ^ rcon[i];
-        k[1]  = k[1]  ^ s[ k[14] ];
-        k[2]  = k[2]  ^ s[ k[15] ];
-        k[3]  = k[3]  ^ s[ k[12] ];
-    }
-}
-
-
 // This is the main attack function
 void attack(){
     // Define the corrolation matrix, h and power matrix
@@ -328,7 +301,6 @@ void attack(){
         allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
         key2[byte] = calculate_key_byte(&correlation, &h, &real_power, byte, 2); // Search for key2 from the AES-XTS specification
     }
-    // devolve_key(key2, 1);
     print_aes_key(2, key2, false);
 
     // Calculate AES key 1...
@@ -342,7 +314,6 @@ void attack(){
         allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
         key1[byte] = calculate_key_byte(&correlation, &h, &real_power, byte, 1); // Search for key2 from the AES-XTS specification
     }
-    // devolve_key(key1, 10);
     print_aes_key(1, key1, false);
 
 
