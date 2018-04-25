@@ -19,10 +19,11 @@ FILE* target_in  = NULL; // buffered attack target output stream
 // Define a structure for a trace
 typedef struct trace {
     int block;
-    char sector[32+1]; // Add extra value for null terminator
+    uint8_t sector[16];
+    uint8_t encrypted_sector[16];
     int length;
     uint8_t *values;
-    char msg[32+1]; // Add extra value for null terminator
+    uint8_t msg[16];
 } trace_t;
 
 
@@ -39,17 +40,34 @@ int interactions=0;
 // -----------------------------------------------------------------------------
 // FUNCTIONS -------------------------------------------------------------------
 
+
+uint8_t hexchar_to_byte(char hex){
+    uint8_t dec = (hex > '9')? (hex &~ 0x20) - 'A' + 10: (hex - '0');
+    return dec;
+}
+
+
+// Given a valid trace and a byte number it will return the byte from the sector number
+uint8_t get_byte_from_hex_array(char *hex_array, int byte_number){
+    uint8_t dec1 = hexchar_to_byte(hex_array[byte_number*2]);
+    uint8_t dec2 = hexchar_to_byte(hex_array[byte_number*2 + 1]);
+    return (dec1 * 16) + dec2;
+}
+
+
 // This function interacts with the attack target and generates a trace structure
 void interact(trace_t *trace) {
     // Send block and sector to attack target...
-    fprintf( target_in, "%d\n"   , trace->block  );  fflush( target_in );
-    fprintf( target_in, "%s\n", trace->sector );  fflush( target_in );
+    fprintf( target_in, "%d\n", trace->block  );  fflush( target_in );
+    for (int byte=0; byte<16; byte++){
+        fprintf( target_in, "%02X", trace->sector[byte] );
+    }
+    fprintf( target_in, "\n" ); fflush( target_in );
 
     // Read length of power trace
     if( 1 != fscanf( target_out, "%d", &trace->length ) ) {
         abort();
     }
-
     // Read in the power trace
     trace->values = malloc(sizeof(uint8_t) * trace->length);
     uint8_t read_ok = 1;
@@ -59,12 +77,18 @@ void interact(trace_t *trace) {
     if (!read_ok){
         abort();
     }
-
-    // Read in the plaintext message
-    if( 1 != fscanf( target_out, "\n%32c", trace->msg ) ) {
+    // Read in the plaintext message and write to binary trace array
+    char hex_msg[32+1];
+    hex_msg[32] = '\0'; // Set last character to NULL terminator
+    if( 1 != fscanf( target_out, "\n%32c", hex_msg ) ) {
         abort();
     }
+    fflush(target_out);
+    for (int byte=0; byte < 16; byte++){
+        trace->msg[byte] = get_byte_from_hex_array(hex_msg, byte);
+    }
 
+    // Increase the number of oracle interations
     interactions++;
 
     // Debug prints
@@ -75,28 +99,14 @@ void interact(trace_t *trace) {
 }
 
 
-uint8_t hexchar_to_byte(char hex){
-    uint8_t dec = (hex > '9')? (hex &~ 0x20) - 'A' + 10: (hex - '0');
-    return dec;
-}
-
-
-// Given a valid trace and a byte number it will return the byte from the sector number
-uint8_t get_sector_byte(trace_t *trace, int byte_number){
-    uint8_t dec1 = hexchar_to_byte(trace->sector[byte_number*2]);
-    uint8_t dec2 = hexchar_to_byte(trace->sector[byte_number*2 + 1]);
-    return (dec1 * 16) + dec2;
-}
-
-
 // This function generates a number of power traces equal to the sample size
 void generate_traces(){
     printf("Generating %d power traces...", SAMPLE_SIZE);
     // Allocate the global traces array based on the sample size
     traces = malloc(sizeof(trace_t) * SAMPLE_SIZE);
-    traces[0].block  = -1;
-    for (int character=0; character < 32; character++){
-        sprintf(&traces[0].sector[character], "%X", 0);
+    traces[0].block  = 0;
+    for (int byte=0; byte < 16; byte++){
+        traces[0].sector[byte] = 255;
     }
     interact(&traces[0]);
     STD_LENGTH = traces[0].length;
@@ -104,11 +114,11 @@ void generate_traces(){
     srand(time(NULL));
     for (int i=1; i<SAMPLE_SIZE; i++){
         // Store the block and the sector in the trace
-        traces[i].block  = -1;
+        traces[i].block  = 0;
         int r;
-        for (int character=0; character < 32; character++){
-            r = rand() % 16;
-            sprintf(&traces[i].sector[character], "%X", r);
+        for (int byte=0; byte < 16; byte++){
+            r = rand() % 256;
+            traces[i].sector[byte] = r;
         }
         interact(&traces[i]);
         if (traces[i].length != STD_LENGTH){ // Throw error if power traces not consistant length
@@ -132,14 +142,26 @@ int byte_hamming_weight(uint8_t byte){
 }
 
 
-void calculate_h_matrix(uint8_t ***h, int byte){
+void calculate_h_matrix_key2(uint8_t ***h, int byte){
     uint8_t tmp;
     uint8_t sector_byte;
     for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
         for (int sample=0; sample < SAMPLE_SIZE; sample++){
-            sector_byte = get_sector_byte(&traces[sample], byte);
+            sector_byte = traces[sample].sector[byte];
             tmp = sector_byte ^ key_byte;
             (*h)[key_byte][sample] = byte_hamming_weight(s[tmp]);
+        }
+    }
+}
+
+
+void calculate_h_matrix_key1(uint8_t ***h, int byte){
+    uint8_t tmp, encrypted_sector_byte;
+    for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
+        for (int sample=0; sample < SAMPLE_SIZE; sample++){
+            encrypted_sector_byte = traces[sample].encrypted_sector[byte];
+            tmp = encrypted_sector_byte ^ key_byte;
+            (*h)[key_byte][sample] = byte_hamming_weight(s_inv[tmp]);
         }
     }
 }
@@ -198,8 +220,17 @@ void allocate_shared_matrices(double ***correlation, uint8_t ***h){
 }
 
 
-uint8_t calculate_key2_byte(double ***correlation, uint8_t ***h, uint8_t ***real_power, int byte){
-    calculate_h_matrix(h, byte);
+uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_power, int byte, int keyNumber){
+    if (keyNumber == 2){
+        calculate_h_matrix_key2(h, byte);
+    }
+    else if (keyNumber == 1){
+        calculate_h_matrix_key1(h, byte);
+    }
+    else{
+        printf("Invalid key number specified.\n");
+        abort();
+    }
     double maxVal=0;
     uint8_t calculatedKey=0;
     for (int value=0; value < STD_LENGTH; value++){
@@ -234,6 +265,51 @@ void print_xts_key(uint8_t *key1, uint8_t *key2){
 }
 
 
+void encrypt_sectors(uint8_t *key){
+    AES_KEY aes_key;
+    AES_set_encrypt_key(key, 128, &aes_key);
+    for (int sample=0; sample<SAMPLE_SIZE; sample++){
+        AES_encrypt(traces[sample].sector, traces[sample].encrypted_sector, &aes_key);
+    }
+    for (int i=0; i<16; i++){
+        printf("%02X", traces[0].sector[i]);
+    }
+    printf("\n");
+    for (int i=0; i<16; i++){
+        printf("%02X", traces[0].msg[i]);
+    }
+    printf("\n");
+}
+
+
+void devolve_key(uint8_t *k, int round_number){
+    // Given the xth round key this function will backtrack to the original AES key (see Rijndael key schedule Wiki)
+    for (int i=round_number; i>0; i--){
+        // Last 32 bit word (as xor is self-inverse perform forward operation again...)
+        k[12] = k[12] ^ k[8];
+        k[13] = k[13] ^ k[9];
+        k[14] = k[14] ^ k[10];
+        k[15] = k[15] ^ k[11];
+
+        k[8]  = k[8]  ^ k[4];
+        k[9]  = k[9]  ^ k[5];
+        k[10] = k[10] ^ k[6];
+        k[11] = k[11] ^ k[7];
+
+        k[4]  = k[4]  ^ k[0];
+        k[5]  = k[5]  ^ k[1];
+        k[6]  = k[6]  ^ k[2];
+        k[7]  = k[7]  ^ k[3];
+
+        // Final step is harder as we have to reverse the key-schedule core on the last 32 bit word...
+        k[0]  = k[0]  ^ s[ k[13] ] ^ rcon[i];
+        k[1]  = k[1]  ^ s[ k[14] ];
+        k[2]  = k[2]  ^ s[ k[15] ];
+        k[3]  = k[3]  ^ s[ k[12] ];
+    }
+}
+
+
 // This is the main attack function
 void attack(){
     // Define the corrolation matrix, h and power matrix
@@ -250,13 +326,30 @@ void attack(){
         double **correlation;
         uint8_t **h;
         allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
-        key2[byte] = calculate_key2_byte(&correlation, &h, &real_power, byte); // Search for key2 from the AES-XTS specification
+        key2[byte] = calculate_key_byte(&correlation, &h, &real_power, byte, 2); // Search for key2 from the AES-XTS specification
     }
+    // devolve_key(key2, 1);
     print_aes_key(2, key2, false);
 
-    // // Calculate AES key 1...
-    // printf("Beginning search for AES key 1...\n");
-    // uint8_t key1[16];
+    // Calculate AES key 1...
+    uint8_t key1[16];
+    printf("Beginning search for AES key 1...\n");
+    encrypt_sectors(key2); // This encrypts the trace sectors with key2
+    #pragma omp parallel for shared(key2)
+    for (int byte=0; byte<16; byte++){
+        double **correlation;
+        uint8_t **h;
+        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
+        key1[byte] = calculate_key_byte(&correlation, &h, &real_power, byte, 1); // Search for key2 from the AES-XTS specification
+    }
+    // devolve_key(key1, 10);
+    print_aes_key(1, key1, false);
+
+
+    // AES_KEY aes_key2;
+    // AES_set_encrypt_key( k, 128, &aes_key2 );
+    // AES_encrypt( m, result, &rk );
+    //
     // print_aes_key(1, key1, false);
 
     // Show final key & oracle interactions...
@@ -298,6 +391,7 @@ void cleanup( int s ){
     // Forcibly terminate the attack target process.
     if( pid > 0 ) {
         kill( pid, SIGKILL );
+        system("killall noah"); // Kill remaining emulator processes
     }
 
     // Forcibly terminate the attacker      process.

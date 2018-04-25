@@ -19,6 +19,8 @@
 #include   <fcntl.h>
 #include <math.h>
 #include <time.h>
+#include <openssl/aes.h>
+
 
 #include "tables.h"
 
