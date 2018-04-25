@@ -90,12 +90,6 @@ void interact(trace_t *trace) {
 
     // Increase the number of oracle interations
     interactions++;
-
-    // Debug prints
-    // printf("%d\n", trace->length);
-    // printf("%s\n", trace->msg);
-    // printf("%s\n", trace->sector);
-    // printf("sector: %d\n", sector);
 }
 
 
@@ -250,7 +244,7 @@ uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_
 
 
 void print_aes_key(int key_number, uint8_t *key, bool raw_print){
-    if (!raw_print) { printf("\nAES Key%d found: ", key_number); }
+    if (!raw_print) { printf("\nAES Key%d found (HEX): ", key_number); }
     for (int i=0; i<16; i++){
         printf("%02X", key[i]);
     }
@@ -259,7 +253,7 @@ void print_aes_key(int key_number, uint8_t *key, bool raw_print){
 
 
 void print_xts_key(uint8_t *key1, uint8_t *key2){
-    printf("\nXTS Key found: ");
+    printf("XTS Key found (HEX): ");
     print_aes_key(1, key1, true);
     print_aes_key(2, key2, true);
     printf("\n");
@@ -272,14 +266,6 @@ void encrypt_sectors(uint8_t *key){
     for (int sample=0; sample<SAMPLE_SIZE; sample++){
         AES_encrypt(traces[sample].sector, traces[sample].encrypted_sector, &aes_key);
     }
-    for (int i=0; i<16; i++){
-        printf("%02X", traces[0].sector[i]);
-    }
-    printf("\n");
-    for (int i=0; i<16; i++){
-        printf("%02X", traces[0].msg[i]);
-    }
-    printf("\n");
 }
 
 
@@ -316,15 +302,7 @@ void attack(){
     }
     print_aes_key(1, key1, false);
 
-
-    // AES_KEY aes_key2;
-    // AES_set_encrypt_key( k, 128, &aes_key2 );
-    // AES_encrypt( m, result, &rk );
-    //
-    // print_aes_key(1, key1, false);
-
-    // Show final key & oracle interactions...
-    // print_xts_key(key1, key2);
+    print_xts_key(key1, key2);
     printf("Total number of oracle interactions: %d\n", interactions);
 }
 
