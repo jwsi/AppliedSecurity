@@ -34,9 +34,9 @@ trace_t *traces;
 // Define variable to store oracle interactions
 int interactions=0;
 
+
 // -----------------------------------------------------------------------------
 // FUNCTIONS -------------------------------------------------------------------
-
 
 // Given a hex character, it will return the decimal equivalent.
 uint8_t hexchar_to_byte(char hex){
@@ -200,6 +200,16 @@ void allocate_real_power_matrix(uint8_t ***real_power){
 }
 
 
+// This function frees memory allocated to the shared matrices
+void free_real_power_matrix(uint8_t ***real_power){
+    // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
+    for (int i=0; i<STD_LENGTH; i++){
+        free((*real_power)[i]);
+    }
+    free(*real_power);
+}
+
+
 // This function allocates space for matrices used by multiple cores.
 void allocate_shared_matrices(double ***correlation, uint8_t ***h){
     // Correlation matrix is of size STD_LENGTH x 256
@@ -212,6 +222,21 @@ void allocate_shared_matrices(double ***correlation, uint8_t ***h){
     for (int i=0; i<256; i++){
         (*h)[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
     }
+}
+
+
+// This function frees memory allocated to the shared matrices
+void free_shared_matrices(double ***correlation, uint8_t ***h){
+    // Correlation matrix is of size STD_LENGTH x 256
+    for (int i=0; i<STD_LENGTH; i++){
+        free((*correlation)[i]);
+    }
+    free(*correlation);
+    // h matrix is of size 256 * SAMPLE_SIZE
+    for (int i=0; i<256; i++){
+        free((*h)[i]);
+    }
+    free(*h);
 }
 
 
@@ -292,6 +317,23 @@ bool verify_keys(uint8_t *key1, uint8_t *key2){
 }
 
 
+// Given a key number, this function will attempt to calculate the aes key
+uint8_t* calculate_key(uint8_t ***real_power, int keyNumber){
+    uint8_t *key = malloc(sizeof(uint8_t) * 16);
+    printf("Beginning search for AES key %d...\n", keyNumber);
+    #pragma omp parallel for shared(key)
+    for (int byte=0; byte<16; byte++){
+        double **correlation;
+        uint8_t **h;
+        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
+        key[byte] = calculate_key_byte(&correlation, &h, real_power, byte, keyNumber); // Search for key2 from the AES-XTS specification
+        free_shared_matrices(&correlation, &h);
+    }
+    print_aes_key(keyNumber, key, false);
+    return key;
+}
+
+
 // This is the main attack function
 void attack(){
     // Define the corrolation matrix, h and power matrix
@@ -301,39 +343,28 @@ void attack(){
     calculate_power_matrix(&real_power); // Calculate a matrix for power values (x=time, y=sample)
 
     // Calculate AES key 2...
-    uint8_t key2[16];
-    printf("Beginning search for AES key 2...\n");
-    #pragma omp parallel for shared(key2)
-    for (int byte=0; byte<16; byte++){
-        double **correlation;
-        uint8_t **h;
-        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
-        key2[byte] = calculate_key_byte(&correlation, &h, &real_power, byte, 2); // Search for key2 from the AES-XTS specification
-    }
-    print_aes_key(2, key2, false);
+    uint8_t *key2 = calculate_key(&real_power, 2);
+
+    // Encrypt trace sectors with key2
+    encrypt_sectors(key2);
 
     // Calculate AES key 1...
-    uint8_t key1[16];
-    printf("Beginning search for AES key 1...\n");
-    encrypt_sectors(key2); // This encrypts the trace sectors with key2
-    #pragma omp parallel for shared(key2)
-    for (int byte=0; byte<16; byte++){
-        double **correlation;
-        uint8_t **h;
-        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
-        key1[byte] = calculate_key_byte(&correlation, &h, &real_power, byte, 1); // Search for key2 from the AES-XTS specification
-    }
-    print_aes_key(1, key1, false);
+    uint8_t *key1 = calculate_key(&real_power, 1);
 
+    // Free the power matrix
+    free_real_power_matrix(&real_power);
 
     // Verify the AES keys
     bool ok = verify_keys(key1, key2);
-
     if (ok) {
         print_xts_key(key1, key2);
+        free(key1);
+        free(key2);
         printf("Total number of oracle interactions: %d\n", interactions);
     }
     else if (!ok){
+        free(key1);
+        free(key2);
         SAMPLE_SIZE+=25;
         attack();
     }
@@ -352,23 +383,11 @@ void cleanup( int s ){
     close( attack_raw[ 0 ] );
     close( attack_raw[ 1 ] );
 
-    // // Free traces array and internal trace structures
-    // for (int i=0; i<SAMPLE_SIZE; i++){
-    //     free(traces[i].values);
-    // }
-    // free(traces);
-    //
-    // // Free correlation matrix
-    // for (int i=0; i<STD_LENGTH; i++){
-    //     free(correlation[i]);
-    // }
-    // free(correlation);
-    //
-    // // Free h matrix
-    // for (int i=0; i<SAMPLE_SIZE; i++){
-    //     free(h[i]);
-    // }
-    // free(h);
+    // Free traces array and internal trace structures
+    for (int i=0; i<SAMPLE_SIZE; i++){
+        free(traces[i].values);
+    }
+    free(traces);
 
     // Forcibly terminate the attack target process.
     if( pid > 0 ) {
