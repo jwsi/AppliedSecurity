@@ -43,6 +43,12 @@ cw2/\.idea/
 
 *.pyc
 
-*.D
-
 cw2/power/attack
+
+cw2/power/22775\.D
+
+cw2/fault/22775\.D
+
+cw2/fault/66289\.D
+
+cw2/fault/68443\.D
