@@ -158,6 +158,16 @@ void calculate_h_matrix(uint8_t ***h, int byte, int keyNumber){
 }
 
 
+// This function allocates memory to the matrix derived from the global trace set.
+void allocate_real_power_matrix(uint8_t ***real_power){
+    // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
+    *real_power = (uint8_t**) malloc(sizeof(uint8_t*) * STD_LENGTH);
+    for (int i=0; i<STD_LENGTH; i++){
+        (*real_power)[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
+    }
+}
+
+
 // Calculates the real power matrix derived from the global trace set.
 void calculate_power_matrix(uint8_t ***real_power){
     for (int value=0; value < STD_LENGTH; value++){
@@ -165,6 +175,16 @@ void calculate_power_matrix(uint8_t ***real_power){
             (*real_power)[value][sample] = traces[sample].values[value];
         }
     }
+}
+
+
+// This function frees memory allocated to the shared matrices
+void free_real_power_matrix(uint8_t ***real_power){
+    // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
+    for (int i=0; i<STD_LENGTH; i++){
+        free((*real_power)[i]);
+    }
+    free(*real_power);
 }
 
 
@@ -187,26 +207,6 @@ double correlate(const uint8_t *x, const uint8_t *y){
         denominator2 += pow((y[i] - y_bar), 2);
     }
     return numerator / (sqrt(denominator1) * sqrt(denominator2));
-}
-
-
-// This function allocates memory to the matrix derived from the global trace set.
-void allocate_real_power_matrix(uint8_t ***real_power){
-    // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
-    *real_power = (uint8_t**) malloc(sizeof(uint8_t*) * STD_LENGTH);
-    for (int i=0; i<STD_LENGTH; i++){
-        (*real_power)[i] = (uint8_t*) malloc(sizeof(uint8_t) * SAMPLE_SIZE);
-    }
-}
-
-
-// This function frees memory allocated to the shared matrices
-void free_real_power_matrix(uint8_t ***real_power){
-    // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
-    for (int i=0; i<STD_LENGTH; i++){
-        free((*real_power)[i]);
-    }
-    free(*real_power);
 }
 
 
@@ -240,6 +240,25 @@ void free_shared_matrices(double ***correlation, uint8_t ***h){
 }
 
 
+// This function prints AES keys in hex.
+void print_aes_key(int key_number, uint8_t *key, bool raw_print){
+    if (!raw_print) { printf("\nAES Key%d could be (HEX): ", key_number); }
+    for (int i=0; i<16; i++){
+        printf("%02X", key[i]);
+    }
+    if (!raw_print) { printf("\n\n"); }
+}
+
+
+// This function prints XTS keys in hex.
+void print_xts_key(uint8_t *key1, uint8_t *key2){
+    printf("XTS Key found (HEX): ");
+    print_aes_key(1, key1, true);
+    print_aes_key(2, key2, true);
+    printf("\n");
+}
+
+
 // For a given key number it will calculate a potential value for the actual key byte.
 uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_power, int byte, int keyNumber){
     calculate_h_matrix(h, byte, keyNumber);
@@ -260,22 +279,20 @@ uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_
 }
 
 
-// This function prints AES keys in hex.
-void print_aes_key(int key_number, uint8_t *key, bool raw_print){
-    if (!raw_print) { printf("\nAES Key%d could be (HEX): ", key_number); }
-    for (int i=0; i<16; i++){
-        printf("%02X", key[i]);
+// Given a key number, this function will attempt to calculate the aes key
+uint8_t* calculate_key(uint8_t ***real_power, int keyNumber){
+    uint8_t *key = malloc(sizeof(uint8_t) * 16);
+    printf("Beginning search for AES key %d...\n", keyNumber);
+    #pragma omp parallel for shared(key)
+    for (int byte=0; byte<16; byte++){
+        double **correlation;
+        uint8_t **h;
+        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
+        key[byte] = calculate_key_byte(&correlation, &h, real_power, byte, keyNumber); // Search for key2 from the AES-XTS specification
+        free_shared_matrices(&correlation, &h);
     }
-    if (!raw_print) { printf("\n\n"); }
-}
-
-
-// This function prints XTS keys in hex.
-void print_xts_key(uint8_t *key1, uint8_t *key2){
-    printf("XTS Key found (HEX): ");
-    print_aes_key(1, key1, true);
-    print_aes_key(2, key2, true);
-    printf("\n");
+    print_aes_key(keyNumber, key, false);
+    return key;
 }
 
 
@@ -314,23 +331,6 @@ bool verify_keys(uint8_t *key1, uint8_t *key2){
     printf("KEY VERIFICATION FAILED!\n");
     printf("Increasing sample size...\n\n");
     return false;
-}
-
-
-// Given a key number, this function will attempt to calculate the aes key
-uint8_t* calculate_key(uint8_t ***real_power, int keyNumber){
-    uint8_t *key = malloc(sizeof(uint8_t) * 16);
-    printf("Beginning search for AES key %d...\n", keyNumber);
-    #pragma omp parallel for shared(key)
-    for (int byte=0; byte<16; byte++){
-        double **correlation;
-        uint8_t **h;
-        allocate_shared_matrices(&correlation, &h); // Allocate memory for matrices
-        key[byte] = calculate_key_byte(&correlation, &h, real_power, byte, keyNumber); // Search for key2 from the AES-XTS specification
-        free_shared_matrices(&correlation, &h);
-    }
-    print_aes_key(keyNumber, key, false);
-    return key;
 }
 
 
@@ -392,7 +392,7 @@ void cleanup( int s ){
     // Forcibly terminate the attack target process.
     if( pid > 0 ) {
         kill( pid, SIGKILL );
-        system("killall noah"); // Kill remaining emulator processes
+        system("killall noah"); // Run on macOS to remove any instances of noah
     }
 
     // Forcibly terminate the attacker      process.
