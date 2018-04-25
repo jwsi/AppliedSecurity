@@ -18,8 +18,8 @@ a rough idea how long (in hours) you spent on it *in total*:
 
 effort : stage 1 -> [22] hours
 effort : stage 2 -> [25] hours
-effort : stage 3 -> [...] hours
-effort : stage 4 -> [...] hours
+effort : stage 3 -> [33] hours
+effort : stage 4 -> [40] hours
 
 -------------------------------------------------------------------------------
 
@@ -69,19 +69,19 @@ generality, realism, or style of a solution.
 
               challenge material (i.e., exponent   d^{*}) : [25802675D0B01797] (IN HEX)
 
-[?] Stage 3 : an attack based on an injected fault
+[X] Stage 3 : an attack based on an injected fault
               - correct challenge material                           ( 40%)
               - solution quality wrt. efficiency, robustness etc.    ( 30%)
               - analysis questions                                   ( 30%)
 
-              challenge material (i.e., cipher key k^{*}) : [...]
+              challenge material (i.e., cipher key k^{*}) : [1F522029440BF387878D7C9F14EF9EFF] (IN HEX)
 
-[?] Stage 4 : an attack based on power consumption
+[X] Stage 4 : an attack based on power consumption
               - correct challenge material                           ( 40%)
               - solution quality wrt. efficiency, robustness etc.    ( 30%)
               - analysis questions                                   ( 30%)
 
-              challenge material (i.e., cipher key k^{*}) : [...]
+              challenge material (i.e., cipher key k^{*}) : [FB27E1C3706EE04DF34DE1D03F7D14EA0C98B5659A181E312AAE95802913E61D] (IN HEX)
 
                                                                      ------
                                                                      (400%)
@@ -129,6 +129,8 @@ source code) should go here:
         sample, it has the chance to restart completely which is often more
         efficient than adding more and more good samples to an already large
         abnormal set.
+    stage3:
+    stage4:
 ]
 
 -------------------------------------------------------------------------------

@@ -395,7 +395,7 @@ void cleanup( int s ){
         system("killall noah"); // Run on macOS to remove any instances of noah
     }
 
-    // Forcibly terminate the attacker      process.
+    // Forcibly terminate the attacker process.
     exit( s );
 }
 
