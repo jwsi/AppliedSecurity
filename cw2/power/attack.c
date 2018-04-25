@@ -1,7 +1,6 @@
 #include "attack.h"
 
 // Define global constants here...
-#define SAMPLE_SIZE 25
 #define GOT printf("Got to line %d\n", __LINE__)
 
 
@@ -26,16 +25,17 @@ typedef struct trace {
     uint8_t msg[16];
 } trace_t;
 
+// Define the sample size (number of traces to collect from oracle)
+int SAMPLE_SIZE=25;
 
 // Define the standard power-trace length
 int STD_LENGTH;
+
 // Define the global traces object
 trace_t *traces;
+
 // Define variable to store oracle interactions
 int interactions=0;
-
-
-
 
 // -----------------------------------------------------------------------------
 // FUNCTIONS -------------------------------------------------------------------
@@ -232,7 +232,7 @@ uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_
 
 
 void print_aes_key(int key_number, uint8_t *key, bool raw_print){
-    if (!raw_print) { printf("\nAES Key%d found (HEX): ", key_number); }
+    if (!raw_print) { printf("\nAES Key%d could be (HEX): ", key_number); }
     for (int i=0; i<16; i++){
         printf("%02X", key[i]);
     }
@@ -254,6 +254,32 @@ void encrypt_sectors(uint8_t *key){
     for (int sample=0; sample<SAMPLE_SIZE; sample++){
         AES_encrypt(traces[sample].sector, traces[sample].encrypted_sector, &aes_key);
     }
+}
+
+
+bool verify_keys(uint8_t *key1, uint8_t *key2){
+    printf("Beginning key verification... ");
+    uint8_t T[16], PP[16];
+
+    AES_KEY aes_key2, aes_key1;
+
+    AES_set_encrypt_key(key2, 128, &aes_key2);
+    AES_encrypt(traces[0].sector, T, &aes_key2);
+
+    AES_set_decrypt_key(key1, 128, &aes_key1);
+    AES_decrypt(T, PP, &aes_key1);
+
+    bool ok = 1;
+    for (int byte=0; byte<16; byte++){
+        ok &= ((T[byte] ^ PP[byte]) == traces[0].msg[byte]);
+    }
+    if (ok){
+        printf("KEY CORRECT!\n\n");
+        return true;
+    }
+    printf("KEY VERIFICATION FAILED!\n");
+    printf("Increasing sample size...\n\n");
+    return false;
 }
 
 
@@ -290,8 +316,18 @@ void attack(){
     }
     print_aes_key(1, key1, false);
 
-    print_xts_key(key1, key2);
-    printf("Total number of oracle interactions: %d\n", interactions);
+
+    // Verify the AES keys
+    bool ok = verify_keys(key1, key2);
+
+    if (ok) {
+        print_xts_key(key1, key2);
+        printf("Total number of oracle interactions: %d\n", interactions);
+    }
+    else if (!ok){
+        SAMPLE_SIZE+=25;
+        attack();
+    }
 }
 
 
