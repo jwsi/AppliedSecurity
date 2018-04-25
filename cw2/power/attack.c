@@ -136,26 +136,23 @@ int byte_hamming_weight(uint8_t byte){
 }
 
 
-void calculate_h_matrix_key2(uint8_t ***h, int byte){
-    uint8_t tmp;
-    uint8_t sector_byte;
+void calculate_h_matrix(uint8_t ***h, int byte, int keyNumber){
+    uint8_t tmp, sector_byte, encrypted_sector_byte, msg_byte;
     for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
         for (int sample=0; sample < SAMPLE_SIZE; sample++){
-            sector_byte = traces[sample].sector[byte];
-            tmp = sector_byte ^ key_byte;
-            (*h)[key_byte][sample] = byte_hamming_weight(s[tmp]);
-        }
-    }
-}
-
-
-void calculate_h_matrix_key1(uint8_t ***h, int byte){
-    uint8_t tmp, encrypted_sector_byte, msg_byte;
-    for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
-        for (int sample=0; sample < SAMPLE_SIZE; sample++){
-            encrypted_sector_byte = traces[sample].encrypted_sector[byte];
-            msg_byte = traces[sample].msg[byte];
-            tmp = encrypted_sector_byte ^ msg_byte;
+            if (keyNumber == 1){
+                encrypted_sector_byte = traces[sample].encrypted_sector[byte];
+                msg_byte = traces[sample].msg[byte];
+                tmp = encrypted_sector_byte ^ msg_byte;
+            }
+            else if (keyNumber == 2){
+                sector_byte = traces[sample].sector[byte];
+                tmp = sector_byte;
+            }
+            else{
+                printf("Invalid key number specified.\n");
+                abort();
+            }
             (*h)[key_byte][sample] = byte_hamming_weight(s[tmp ^ key_byte]);
         }
     }
@@ -216,16 +213,7 @@ void allocate_shared_matrices(double ***correlation, uint8_t ***h){
 
 
 uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_power, int byte, int keyNumber){
-    if (keyNumber == 2){
-        calculate_h_matrix_key2(h, byte);
-    }
-    else if (keyNumber == 1){
-        calculate_h_matrix_key1(h, byte);
-    }
-    else{
-        printf("Invalid key number specified.\n");
-        abort();
-    }
+    calculate_h_matrix(h, byte, keyNumber);
     double maxVal=0;
     uint8_t calculatedKey=0;
     for (int value=0; value < STD_LENGTH; value++){
