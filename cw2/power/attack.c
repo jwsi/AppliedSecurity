@@ -41,13 +41,14 @@ int interactions=0;
 // FUNCTIONS -------------------------------------------------------------------
 
 
+// Given a hex character, it will return the decimal equivalent.
 uint8_t hexchar_to_byte(char hex){
     uint8_t dec = (hex > '9')? (hex &~ 0x20) - 'A' + 10: (hex - '0');
     return dec;
 }
 
 
-// Given a valid trace and a byte number it will return the byte from the sector number
+// Given a valid trace and a byte number it will return the byte from the sector number.
 uint8_t get_byte_from_hex_array(char *hex_array, int byte_number){
     uint8_t dec1 = hexchar_to_byte(hex_array[byte_number*2]);
     uint8_t dec2 = hexchar_to_byte(hex_array[byte_number*2 + 1]);
@@ -55,7 +56,7 @@ uint8_t get_byte_from_hex_array(char *hex_array, int byte_number){
 }
 
 
-// This function interacts with the attack target and generates a trace structure
+// This function interacts with the attack target and generates a trace structure.
 void interact(trace_t *trace) {
     // Send block and sector to attack target...
     fprintf( target_in, "%d\n", trace->block  );  fflush( target_in );
@@ -93,7 +94,7 @@ void interact(trace_t *trace) {
 }
 
 
-// This function generates a number of power traces equal to the sample size
+// This function generates a number of power traces equal to the sample size.
 void generate_traces(){
     printf("Generating %d power traces...", SAMPLE_SIZE);
     // Allocate the global traces array based on the sample size
@@ -125,7 +126,7 @@ void generate_traces(){
 }
 
 
-// This function returns the hamming weight of a byte
+// This function returns the hamming weight of a byte.
 int byte_hamming_weight(uint8_t byte){
     // Increase hweight until byte is 0
     int hweight;
@@ -136,6 +137,7 @@ int byte_hamming_weight(uint8_t byte){
 }
 
 
+// Calculates a hypothetical power matrix based on the key number and byte value.
 void calculate_h_matrix(uint8_t ***h, int byte, int keyNumber){
     uint8_t tmp, sector_byte, encrypted_sector_byte, msg_byte;
     for (int key_byte=0; key_byte<256; key_byte++){ // Try all possible byte values
@@ -159,6 +161,7 @@ void calculate_h_matrix(uint8_t ***h, int byte, int keyNumber){
 }
 
 
+// Calculates the real power matrix derived from the global trace set.
 void calculate_power_matrix(uint8_t ***real_power){
     for (int value=0; value < STD_LENGTH; value++){
         for (int sample=0; sample < SAMPLE_SIZE; sample++){
@@ -168,6 +171,7 @@ void calculate_power_matrix(uint8_t ***real_power){
 }
 
 
+// This function calculates a correlation co-efficient between two samples.
 double correlate(const uint8_t *x, const uint8_t *y){
     // Calculate the mean for both classes
     double x_bar = 0, y_bar = 0;
@@ -189,6 +193,7 @@ double correlate(const uint8_t *x, const uint8_t *y){
 }
 
 
+// This function allocates memory to the matrix derived from the global trace set.
 void allocate_real_power_matrix(uint8_t ***real_power){
     // real_power matrix is of size STD_LENGTH x SAMPLE_SIZE
     *real_power = (uint8_t**) malloc(sizeof(uint8_t*) * STD_LENGTH);
@@ -198,6 +203,7 @@ void allocate_real_power_matrix(uint8_t ***real_power){
 }
 
 
+// This function allocates space for matrices used by multiple cores.
 void allocate_shared_matrices(double ***correlation, uint8_t ***h){
     // Correlation matrix is of size STD_LENGTH x 256
     *correlation = (double**) malloc(sizeof(double*) * STD_LENGTH);
@@ -212,6 +218,7 @@ void allocate_shared_matrices(double ***correlation, uint8_t ***h){
 }
 
 
+// For a given key number it will calculate a potential value for the actual key byte.
 uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_power, int byte, int keyNumber){
     calculate_h_matrix(h, byte, keyNumber);
     double maxVal=0;
@@ -231,6 +238,7 @@ uint8_t calculate_key_byte(double ***correlation, uint8_t ***h, uint8_t ***real_
 }
 
 
+// This function prints AES keys in hex.
 void print_aes_key(int key_number, uint8_t *key, bool raw_print){
     if (!raw_print) { printf("\nAES Key%d could be (HEX): ", key_number); }
     for (int i=0; i<16; i++){
@@ -240,6 +248,7 @@ void print_aes_key(int key_number, uint8_t *key, bool raw_print){
 }
 
 
+// This function prints XTS keys in hex.
 void print_xts_key(uint8_t *key1, uint8_t *key2){
     printf("XTS Key found (HEX): ");
     print_aes_key(1, key1, true);
@@ -248,6 +257,7 @@ void print_xts_key(uint8_t *key1, uint8_t *key2){
 }
 
 
+// This function encrypts all trace sectors with a given key.
 void encrypt_sectors(uint8_t *key){
     AES_KEY aes_key;
     AES_set_encrypt_key(key, 128, &aes_key);
@@ -257,6 +267,8 @@ void encrypt_sectors(uint8_t *key){
 }
 
 
+// Given two keys this function will determine validity based on the ground truth at trace[0].
+// Ciphertext at trace[0] is set to 0 due to the sector being too large.
 bool verify_keys(uint8_t *key1, uint8_t *key2){
     printf("Beginning key verification... ");
     uint8_t T[16], PP[16];
