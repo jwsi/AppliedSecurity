@@ -392,7 +392,7 @@ void cleanup( int s ){
     // Forcibly terminate the attack target process.
     if( pid > 0 ) {
         kill( pid, SIGKILL );
-        system("killall noah"); // Run on macOS to remove any instances of noah
+        // system("killall noah"); // Run on macOS to remove any instances of noah
     }
 
     // Forcibly terminate the attacker process.
@@ -445,8 +445,8 @@ int main( int argc, char* argv[] ) {
         }
 
     // Produce a sub-process representing the attack target.
-    // execl( argv[ 1 ], argv[ 0 ], NULL ); // Use this for regular usage
-    system("/usr/local/bin/noah ./27149.D"); // Use this for macOS emulation
+    execl( argv[ 1 ], argv[ 0 ], NULL ); // Use this for regular usage
+    // system("/usr/local/bin/noah ./27149.D"); // Use this for macOS emulation
     }
     // Abort if fork failed...
     else if( pid <  0 ) {

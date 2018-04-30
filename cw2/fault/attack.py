@@ -191,7 +191,7 @@ def verify_keys(keys, messages, ctxt_blocks):
 def main():
     start = time.time()
     # Spin up a subprocess.
-    target = subprocess.Popen(args=["noah", sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
+    target = subprocess.Popen(args=[sys.argv[1]], stdout=subprocess.PIPE, stdin=subprocess.PIPE)
     # Perform the attack
     messages = generate_messages(sample_size)
     _, ctxtBlockPairs = generate_ciphertexts(target, messages)

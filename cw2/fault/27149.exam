@@ -19,7 +19,7 @@ Q.4 For side-channel attacks, the number of acquisitions required can be
     attack on AES could be as efficient as a fault attack based on these
     measures.
 
-    The equivalent measure of number of aquisitions in terms of a fault attack
+    The equivalent measure of number of acquisitions in terms of a fault attack
     would be how many faults you inject into the device. Obviously the more
     faults you are able to inject the better chances of your success. However,
     in reality the ability to inject a fault more than once is very limited.
