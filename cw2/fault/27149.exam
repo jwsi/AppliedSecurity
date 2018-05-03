@@ -1,17 +1,87 @@
-REMOVE NOAH
-REMOVE NOAH!!!
-
-
 Q.1 Consider that instead of influencing data (e.g., the AES state), a
     fault might influence control-flow (e.g., a conditional statement)
     somehow during execution.  Stating any assumptions you make, give an
     alternative attack strategy based on this ability.
+
+    A viable fault attack that operates upon instruction flow can work in much
+    the same way as the fault attack based on data if you are able to influence
+    the MixColumn operation in round 8 of AES encryption. If you change this
+    function in round 8 to process 15 bytes instead of the full 16 bytes in the
+    state matrix then you leave 1 byte unchanged by this function. You can
+    somewhat think of this as a fault induced in the data by the original fault
+    attack. This fault will then propagate to the entire state matrix after
+    being acted upon by the other functions. An advantage of this type of
+    attack is that you can easily monitor when the instruction flow has been
+    altered in the MixColumn operation at round 8. For example, if you look at
+    a power trace from an attack target, you should be able to identify when
+    the MixColumn operation acts upon all 16 bytes in the 8th round and when
+    the fault is induced and subsequently acts upon only 15 bytes. Once you
+    detect that a fault in the instruction flow has been injected you will
+    receive a faulty ciphertext and can begin to extract the key material by
+    using the same method for the regular fault attack.
+
 Q.2 Outline the methods available for hardening this AES implementation
     against fault attacks; for each method, explain any assumptions you
     make and compare it with the others wrt.  metrics such as robustness,
     latency, and memory footprint.
 
-
+    1] Inverting AES for correctness:
+    After the AES encryption operation has finished you could take the
+    resulting ciphertext and pass it through the AES decryption procedure. If
+    the output from the decryption procedure is equal to that of the original
+    ciphertext then no fault has been induced. You could use this method to
+    mitigate against fault attacks as faulty ciphertexts would not decrypt to
+    the original message. This puts larger strains on an adversary because it
+    means they have to additionally inject a fault into the verification phase.
+    Obviously, the same countermeasure can be achieved with AES decryption by
+    using the AES encryption procedure as the verifier. This method has a large
+    impact on latency. I.e. the time taken to encrypt a message at least
+    doubles because the use of the inverse AES procedure is required before
+    output can be released (both encryption and decryption has to be used
+    regardless). With respect to memory footprint, the verification phase will
+    be performed after the initial encryption or decryption. This means that
+    any memory used for the initial phase can be freed and used again in the
+    verification phase. So the only extra memory required would be to store the
+    original message for comparison. This could be considered fairly robust due
+    to the difficulty of injecting faults in the first place, so additionally
+    injecting a fault in the verification process is a challenge. This method
+    coupled with a coding scheme below would most likely significantly harden
+    the implementation against fault attacks. However, if an adversary is able
+    to change the original message stored in memory such that it is the
+    decryption of their faulty ciphertext then this countermeasure clearly
+    fails as the verifier would accept the faulty ciphertext.
+    2] Coding scheme:
+    By adding an appropriate coding scheme to the state matrix you can
+    introduce redundancy and protect against fault attacks being induced. For
+    example, linear codes are error correcting codes and if a fault is induced
+    you may be able to correct it (or at least detect it) if enough redundancy
+    is specified in the code. By using this method you could potentially
+    correct the state matrix after each operation and prevent faults from
+    propagating. This obviously has a higher memory footprint because you are
+    storing redundant information pertinent to the state matrix. It would also
+    have a higher latency impact due to the extra checks that must be enforced
+    after each operation in every round of AES. Additionally, when a error
+    correction must be performed, it will take a significant amount of extra
+    time to calculate the correct state.
+    3] Parallel execution:
+    Execute AES encryption/decryption in parallel such that the two identical
+    processes perform under the same input data, if the resulting output from
+    the two processes is the same then a fault hasn't been induced and the
+    output can be returned, otherwise a fault has been detected. With this
+    countermeasure an attacker would have to induce a fault in both processes
+    at the same point to produce a faulty ciphertext. This is significantly
+    harder and so increases the difficulty of a fault attack for an adversary.
+    As this implementation is based on a Intel 8051 processor the ability to
+    implement this countermeasure may be limited as parallel execution isn't
+    available. However, there may be the possibility to run the two "parallel"
+    AES procedures as independent threads. This countermeasure clearly
+    increases the latency of the implementation as you have to do an additional
+    AES procedure sequentially on this device. The memory footprint would also
+    increase as each AES thread would require it's own state matrix and
+    ancillary variables. The robustness of this countermeasure may also be up
+    for debate in this implementation as an attacker only has to induce faults
+    sequentially and not simultaneously due to the underlying execution
+    environment, so the extra difficulty may be up for debate.
 
 Q.4 For side-channel attacks, the number of acquisitions required can be
     used as a measure of efficiency.  Outline the equivalent measure for
@@ -20,20 +90,27 @@ Q.4 For side-channel attacks, the number of acquisitions required can be
     measures.
 
     The equivalent measure of number of acquisitions in terms of a fault attack
-    would be how many faults you inject into the device. Obviously the more
-    faults you are able to inject the better chances of your success. However,
-    in reality the ability to inject a fault more than once is very limited.
-    Injecting faults requires the use of lasers and other sophisticated
-    equipment to ensure that the fault is inserted in exactly the correct place
-    in the AES algorithm (in this case at the 8th round, before the SubBytes
-    function at (0,0) in the state matrix). So although in simulation you can
-    easily do this by increasing the number of interactions + faults induced.
-    In practice, this would take a significant amount of time and effort,
-    arguably more time than it would to iterate through all the possibilities
-    from one single fault. So the efficiency of a fault attack purely lies in
-    how many faults you induce in a target device.
+    would be how many faults you inject into the attack target. The more faults
+    you are able to inject, the better chances of your success. This is because
+    multiple faults injected into an attack target help an adversary calculate
+    the target material faster by taking the set intersection of the
+    possibilities generated for the key by each independent faulty interaction.
+    However, in reality, the ability to inject a fault more than once is very
+    limited. Injecting faults requires the use of lasers and other
+    sophisticated equipment to ensure that the fault is inserted in exactly the
+    correct place in the AES algorithm (in this case at the 8th round, before
+    the SubBytes function at (0,0) in the state matrix). So although in
+    simulation you can easily do this by increasing the number of interactions
+    (and subsequently the faults induced). In practice, injecting these extra
+    faults would take a significant amount of time and effort, arguably more
+    time than it would take to iterate through all the possibilities from one
+    single fault alone. So the efficiency of a fault attack purely lies in how
+    many faults you induce in a target device.
     In summary, a side channel attack can be as efficient as a fault attack
-    based on these measures as the time taken to gather.... FINISH THIS
+    based on these measures as the time taken to gather vast amounts of power
+    samples, clock measures, EM radiation and so on may often be far quicker
+    than one single fault injection. Subsequently, the calculation of the
+    target material may be faster with a side channel attack.
 
 Q.5 How do the properties of different AES round functions influence the
     effectiveness of your attack?  More specifically, imagine SubBytes is
