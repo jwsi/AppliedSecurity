@@ -44,7 +44,7 @@ Q.1 As a security consultant, you have been working on a prototype of the
     In summary, I would choose the masking technique as a recommendation. This
     particular countermeasure has good resistance properties to a DPA attack
     and also has the advantage that it could be implemented fairly easily in
-    software as it boils down to creating a new sbox and performing some extra 
+    software as it boils down to creating a new sbox and performing some extra
     Boolean addition on the AES round functions' parameters to incorporate the
     mask.
 
@@ -55,6 +55,30 @@ Q.2 The vendor of the attack target opts to replace the 8-bit Intel 8051
     encryption or decryption, but they *also* want to know if it might make
     the device more secure wrt.  DPA attacks: what is your assessment, and
     why ?
+
+    Single cycle operation on 32 bits of the AES state will make the device
+    more secure with respect to DPA attacks.
+    Firstly, single cycle operations on 32 bits of the AES state means that you
+    can manipulate a quarter of the state matrix at once. This means that many
+    of the intermediary values used to calculate correlation will be overlayed
+    over each other on the power trace. From an adversaries perspective this
+    makes it very hard to correlate individual AES state bytes with the power
+    trace, thus making a DPA attack much harder from a byte level. Instead an
+    attacker is forced to guess 32 bits of the key at once. This equates to
+    4 * 2^32 possible key values that must be iterated through by the adversary
+    as opposed to 16 * 2^8 values with the previous processor that modified
+    state bytes individually. This is a somewhat insurmountable task.
+    Secondly, power trace spikes are largely caused by accessing memory
+    locations in RAM. Pushing and pulling memory to and from RAM requires
+    numerous clock cycles. Therefore, as the ARM Cortex-M0 facilitates single
+    cycle operations it means that there is never any memory sent to and from
+    RAM during manipulation of 32 bits of the state matrix. This will flatten
+    the power trace considerably, thus making it harder for an attacker to
+    perform a DPA attack.
+    In summary, the new ARM Cortex-M0 processor with hardware support for
+    single-cycle operations on 32 bits of the AES state provides a definite
+    security benefit over that of the original Intel 8051 processor.
+
 Q.3 DPA attacks work because statistics can (to some degree) remove the
     noise within power consumption traces.  Explain the concepts of signal,
     noise and signal-to-noise ratio, and the role each has in a DPA attack
