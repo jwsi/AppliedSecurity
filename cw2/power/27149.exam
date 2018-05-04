@@ -83,7 +83,19 @@ Q.3 DPA attacks work because statistics can (to some degree) remove the
     noise within power consumption traces.  Explain the concepts of signal,
     noise and signal-to-noise ratio, and the role each has in a DPA attack
     of this type.
+
+    DPA attacks use analogue electrical signals.
+    A signal is simply a carrier of information from one place to another. The signal is categorised as useful information. In the case of DPA attacks the signal is in the form of a power trace.
+    Noise is useless data that interferes with the signal. It can be caused by many factors, some environmental (EM radiation for example) and others purposeful (a countermeasure to prevent a DPA attack for example). Too much noise can reduce the ability to read the signal effectively.
+    Signal to noise ratio (SNR) as the name suggests, is simply the ratio between the useful signal and the unwanted noise. Generally speaking, the higher the SNR, the better quality the data set and the more information can be extracted.
+    In the specific case of a DPA attack, it is very important to have a high SNR to ensure that the power traces collected can be utilised effectively to provide good correlation to the key bytes used in the AES rounds.
+
 Q.8 The vendor of the attack target decides to use AES-192 rather than
     AES-128; their argument is that longer keys will naturally improve
     security in general *and* vs.  DPA attacks.  Explain if and why you
     agree or disagree with this argument.
+
+    A larger key length will increase the general security of the underlying cipher. This is because with a 128 bit key, a brute force algorithm would require 2^128 guesses to obtain the correct key. On the other hand a 192 bit key would take 2^192 guesses. Clearly this is far more guesses in the case of the 192 bit key and therefore in terms of brute force security a 192 bit key offers greater security. When it comes to DPA attacks it will not add a great deal of security for the following reasons:
+    AES with a 128 bit key and a 192 bit key differ in 1 main way. A 128 bit key variant of AES performs 10 rounds of repetition of the AES round functions (AddRoundKey, SubBytes, ShiftRow, MixColumn) whilst a 192 bit key performs 12 rounds of repetition.
+    The state matrix still remains at the size of 16 bytes due to the fixed block size of 128 bits of AES. This means that the DPA attack can still work on the same intermediary values as before. Consequently the attack will still be able to calculate the underlying 128 bit round key. Once this is found it is simply a case of devolving this key using the 192 bit variant of the Rijndael key schedule to obtain the original 192 bit key.
+    So to sum up, the statement is only partially correct. Whilst longer keys do increase the general level of security in terms of a brute force attack, they certainly don't help in the case of a DPA attack.
