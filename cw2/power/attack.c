@@ -365,6 +365,14 @@ void attack(){
     else if (!ok){
         free(key1);
         free(key2);
+        // Free the traces object and start again
+        if (traces){
+            for (int i=0; i<SAMPLE_SIZE; i++){
+                free(traces[i].values);
+            }
+            free(traces);
+            traces = NULL;
+        }
         SAMPLE_SIZE+=25;
         attack();
     }
@@ -384,10 +392,13 @@ void cleanup( int s ){
     close( attack_raw[ 1 ] );
 
     // Free traces array and internal trace structures
-    for (int i=0; i<SAMPLE_SIZE; i++){
-        free(traces[i].values);
+    if (traces){
+        for (int i=0; i<SAMPLE_SIZE; i++){
+            free(traces[i].values);
+        }
+        free(traces);
+        traces = NULL;
     }
-    free(traces);
 
     // Forcibly terminate the attack target process.
     if( pid > 0 ) {
@@ -444,9 +455,9 @@ int main( int argc, char* argv[] ) {
             abort();
         }
 
-    // Produce a sub-process representing the attack target.
-    execl( argv[ 1 ], argv[ 0 ], NULL ); // Use this for regular usage
-    // system("/usr/local/bin/noah ./27149.D"); // Use this for macOS emulation
+        // Produce a sub-process representing the attack target.
+        execl( argv[ 1 ], argv[ 0 ], NULL ); // Use this for regular usage
+        // system("/usr/local/bin/noah ./27149.D"); // Use this for macOS emulation
     }
     // Abort if fork failed...
     else if( pid <  0 ) {
