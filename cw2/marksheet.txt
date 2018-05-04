@@ -45,6 +45,10 @@ and what isn't:
     stage3:
         AES Fault Attack:
             https://eprint.iacr.org/2009/575.pdf
+    stage4:
+        AES Power Attack:
+            Bristol Blackboard Lecture Slides
+            https://www.ole.bris.ac.uk/bbcswebdav/courses/COMS30901_2017/csmeo/8-appliedsec-AES.pdf (Auth required)
 ]
 
 -------------------------------------------------------------------------------
@@ -145,12 +149,31 @@ source code) should go here:
         increased samples may be infeasible in practice due to the difficulty
         of injecting faults in the first place. I was going to add C extensions
         to Python to improve the speed of xor and memory lookup operations in
-        stage 2 of the attack from the paper. If I had done this then it is
-        likely that I wouldn't have needed to increase my sample size. However,
-        I did run out of time and had to move to the power attack which is
-        unfortunate. In any case, the code works and verifies the result and
-        completes in under a second in my testing.
+        stage 2 of the attack from the paper (as this stage is where most of
+        the execution time is spent). If I had done this then it is likely that
+        I wouldn't have needed to increase the number of faults injected.
+        However, I did run out of time and had to move to the power attack
+        which is unfortunate. In any case, the code works very well, verifies
+        the recovered target material and completes in under a second in my
+        testing.
     stage4:
+        I created stage 4 in C to provide a fast implementation as the power
+        attack requires multiple nested for loops to iterate over the various
+        key possibilities. The attack works well and is relatively fast and
+        recovers the key from my oracle in around 22 seconds with 25 power
+        trace samples. The speed increase is largely due to the use of OpenMP
+        to parallelise the main for loop which calculates the corresponding key
+        byte for each byte in the state matrix. So in effect 16 threads are
+        spun up to tackle the problem which on a multi-core machine greatly
+        reduces the runtime.
+        I also implemented a verification procedure to confirm if the XTS key
+        recovered by the attack is correct. If an incorrect key is found, the
+        algorithm will increase the power trace sample size by 25 and start the
+        process again. This dynamic increase in sample size allowed me to
+        submit my code with a base sample size of 25 and know that if more
+        samples are required, they will be used. I think this is preferable
+        over submitting the code with a conservative number of samples (e.g.
+        100).
 ]
 
 -------------------------------------------------------------------------------
